@@ -28,6 +28,21 @@ VITE_SIGNALR_SKIP_NEGOTIATION=true npm run dev -- --host 0.0.0.0
 
 `http://localhost:18080`
 
+Быстрая проверка, что UI-стенд поднялся корректно:
+
+```bash
+curl -sS -D - http://localhost:18080/ -o /tmp/bugget-thesis-root.html
+curl -sS -D - http://localhost:18080/login -o /tmp/bugget-thesis-login.html
+curl -sS -D - http://localhost:18080/@vite/client -o /tmp/bugget-thesis-vite-client.js
+curl -sS -D - http://localhost:18080/env.js -o /tmp/bugget-thesis-env.js
+```
+
+Ожидаемо:
+
+- `/` возвращает `302` с `Location: /login?next=/`;
+- `/login`, `/@vite/client` и `/env.js` возвращают `200 OK`;
+- `/@vite/client` и `/env.js` возвращают JavaScript, а не HTML fallback.
+
 ## Стенд без Redis backplane
 
 Этот режим нужен, чтобы показать исходное ограничение multi-instance архитектуры без межузловой доставки.

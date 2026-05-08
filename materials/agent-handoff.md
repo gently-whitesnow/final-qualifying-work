@@ -17,6 +17,7 @@
 - Шаблон индивидуального задания: `/Users/gently/projects/final-qualifying-work/materials/ИндивидуальноеЗадание2026заоч.docx`
 - Шаблон титульного листа отчета: `/Users/gently/projects/final-qualifying-work/materials/ТитульныйЛист2026заочное.docx`
 - Шаблон презентации по практике: `/Users/gently/projects/final-qualifying-work/materials/ШаблонПДП2026.pptx`
+- Черновик содержательной части ВКР: `/Users/gently/projects/final-qualifying-work/materials/vkr-draft-content.md`
 
 ## Утвержденная тема
 
@@ -69,6 +70,18 @@
   - сценариями отказа и переподключения;
   - базовыми метриками или нагрузочным экспериментом;
   - воспроизводимым стендом на минимальной инфраструктуре.
+
+## Текущий статус реализации
+
+- Рабочая ветка продукта: `thesis/realtime-scaleout`.
+- Стенд с Redis backplane запускается через `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml`.
+- Режим без backplane запускается через комбинацию `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml` и `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.no-backplane.yml`.
+- Для thesis-стенда добавлен отдельный nginx-конфиг `/Users/gently/projects/bugreport-root/bugget/nginx/nginx.thesis.conf`, чтобы auth-редиректы сохраняли внешний порт `18080`.
+- Для Vite dev server через nginx добавлен snippet `/Users/gently/projects/bugreport-root/bugget/nginx/vite-dev.thesis.conf`.
+- Для self-hosted dev-режима добавлен `/Users/gently/projects/bugreport-root/bugget/frontend/public/env.js`; production Dockerfile self-hosted все равно подменяет итоговый `env.js` из `env.template.js`.
+- UI-стенд открывается через `http://localhost:18080` после запуска frontend dev server командой `VITE_SIGNALR_SKIP_NEGOTIATION=true npm run dev -- --host 0.0.0.0`.
+- Автоматизированный сценарий `npm run test:realtime-scaleout` подтвердил доставку события между `bugget-api-1` и `bugget-api-2` при включенном Redis backplane.
+- При отключенном backplane тот же сценарий завершался timeout, что фиксирует исходное ограничение multi-instance режима.
 
 ## Важные ограничения по оформлению
 
