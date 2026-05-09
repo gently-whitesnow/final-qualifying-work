@@ -80,13 +80,15 @@
 - Сервисы стенда в compose названы `app-api-1`, `app-api-2`, `redis_app_thesis`, `postgres_app_thesis`, `nginx_app_thesis`.
 - Минимальный проверочный клиент находится в `/Users/gently/projects/bugreport-root/bugget/scripts/realtime-scaleout-check.mjs`.
 - Автоматизированный сценарий `node scripts/realtime-scaleout-check.mjs` или `npm run test:realtime-scaleout` подтвердил доставку события между `app-api-1` и `app-api-2` при включенном Redis backplane.
-- Проверочный клиент расширен серийным режимом `THESIS_ITERATIONS=N`; короткий прогон `THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs` дал 5 успешных доставок из 5, `avg = 5,5 мс`, `p50 = 4,4 мс`, `p95 = 9,5 мс`.
+- Проверочный клиент расширен серийным режимом `THESIS_ITERATIONS=N`; прогретый прогон `THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs` дал 5 успешных доставок из 5, `avg = 8,4 мс`, `p50 = 9,1 мс`, `p95 = 11,6 мс`.
+- Режим `THESIS_SCENARIO=rejoin` подтвердил повторное вступление клиента в группу после разрыва соединения: новый `connectionId`, последующее событие получено, `reconnectAndRejoinMs = 12,9 мс`.
+- Режим `THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000` подтвердил восстановление после остановки `app-api-2`: клиент через nginx перешел с `app-api-2` на `app-api-1`, повторно вступил в группу и получил событие; `failoverReconnectAndRejoinMs = 240,3 мс`.
 - При отключенном backplane тот же сценарий завершался timeout, что фиксирует исходное ограничение multi-instance режима.
 
 ## Важные ограничения по оформлению
 
 - Для отчета по преддипломной практике рекомендуется объем 25-35 страниц.
-- Для содержательной части полной ВКР ориентир из заметок: 40-60 страниц.
+- Для текущего универсального варианта ВКР/отчета по практике пользователь попросил целиться в 35 страниц, чтобы документ подходил и для отчета по практике, и как база будущего итогового ВКР.
 - Источников должно быть не менее 15.
 - Интернет-источники: не более 50 процентов списка.
 - Иностранные источники: желательно, но не более 50 процентов списка.
@@ -95,8 +97,19 @@
 ## Текущий статус DOCX
 
 - Актуальный DOCX: `/Users/gently/projects/final-qualifying-work/build/docx/vkr-draft-1.docx`.
+- Отдельная версия отчета по преддипломной практике: `/Users/gently/projects/final-qualifying-work/build/docx/practice-report-draft-1.docx`.
 - Генератор DOCX: `/Users/gently/projects/final-qualifying-work/scripts/build_vkr_docx.py`.
+- Генератор отчета по практике: `/Users/gently/projects/final-qualifying-work/scripts/build_practice_report_docx.py`.
 - Рендер для визуальной проверки: `/Users/gently/projects/final-qualifying-work/build/docx/rendered`.
 - В генератор добавлены три воспроизводимые иллюстрации: single-node архитектура, multi-instance архитектура с Redis backplane, поток события `ReceiveReportPatch`.
 - Титульный лист помещается на одну страницу, содержание статическое и синхронизировано с текущим render-проходом.
+- Актуальный DOCX после добавления serial/rejoin/failover результатов занимает 33 страницы, то есть остается в лимите пользователя до 35 страниц. Версия отчета по практике занимает 32 страницы.
 - В актуальном DOCX нет старых маркеров `authorization-api`, `users-api`, `bugget-api-1`, `bugget-api-2`, `frontend`, `RealtimeDebugBadge`.
+- Список источников расширен до 20 наименований: интернет-источники составляют 10 из 20, что соответствует ограничению не более 50 процентов.
+
+## Текущий статус PPTX
+
+- Черновик презентации: `/Users/gently/projects/final-qualifying-work/build/pptx/vkr-defense-draft.pptx`.
+- Генератор презентации: `/Users/gently/projects/final-qualifying-work/scripts/build_vkr_pptx.py`.
+- Презентация содержит 10 слайдов: проблема, целевая архитектура, реализация, стенд, baseline/backplane, серия, rejoin/failover, практическая значимость и вывод.
+- PPTX проверен через LibreOffice export в PDF; временные preview/contact-sheet артефакты удалены, оставлен только финальный `.pptx`.

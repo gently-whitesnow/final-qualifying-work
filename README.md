@@ -31,8 +31,12 @@
 ## Актуальные артефакты
 
 - Черновик ВКР: `build/docx/vkr-draft-1.docx`
+- Отчет по преддипломной практике: `build/docx/practice-report-draft-1.docx`
+- Черновик презентации: `build/pptx/vkr-defense-draft.pptx`
 - Источник контента: `materials/04-docx/vkr-draft-content.md`
 - Генератор DOCX: `scripts/build_vkr_docx.py`
+- Генератор отчета по практике: `scripts/build_practice_report_docx.py`
+- Генератор PPTX: `scripts/build_vkr_pptx.py`
 - Pipeline DOCX: `materials/04-docx/docx-pipeline.md`
 - Handoff: `materials/99-handoff/agent-handoff.md`
 
@@ -41,6 +45,13 @@
 ```bash
 cd /Users/gently/projects/final-qualifying-work
 /Users/gently/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_vkr_docx.py
+```
+
+## Сборка отчета по практике
+
+```bash
+cd /Users/gently/projects/final-qualifying-work
+/Users/gently/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_practice_report_docx.py
 ```
 
 ## Render-QA

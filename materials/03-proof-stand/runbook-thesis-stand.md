@@ -107,6 +107,22 @@ THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs
 
 В этом режиме скрипт выводит `successful`, `failed` и агрегированные задержки доставки: `min`, `max`, `avg`, `p50`, `p95`.
 
+Для проверки восстановления подписки после разрыва:
+
+```bash
+cd /Users/gently/projects/bugreport-root/bugget
+THESIS_SCENARIO=rejoin node scripts/realtime-scaleout-check.mjs
+```
+
+Для проверки отказа одного экземпляра через nginx:
+
+```bash
+cd /Users/gently/projects/bugreport-root/bugget
+THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000 node scripts/realtime-scaleout-check.mjs
+```
+
+Failover-сценарий намеренно требует `THESIS_ALLOW_DOCKER_CONTROL=1`, потому что он останавливает `app-api-2`, проверяет переподключение клиента к доступному узлу и затем запускает контейнер обратно.
+
 ## Полезные логи
 
 ```bash

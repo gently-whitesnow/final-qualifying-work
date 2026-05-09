@@ -37,6 +37,13 @@ cd /Users/gently/projects/bugreport-root/bugget
 THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs
 ```
 
+Для проверки восстановления:
+
+```bash
+THESIS_SCENARIO=rejoin node scripts/realtime-scaleout-check.mjs
+THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000 node scripts/realtime-scaleout-check.mjs
+```
+
 ## Результат с Redis backplane
 
 Стенд запущен командой:
@@ -99,11 +106,11 @@ THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs
   "successful": 5,
   "failed": 0,
   "latencyMs": {
-    "min": 3.6,
-    "max": 9.5,
-    "avg": 5.5,
-    "p50": 4.4,
-    "p95": 9.5
+    "min": 5.5,
+    "max": 11.6,
+    "avg": 8.4,
+    "p50": 9.1,
+    "p95": 11.6
   }
 }
 ```
@@ -111,9 +118,81 @@ THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs
 Интерпретация:
 
 - все 5 проверок подтвердили доставку события между `app-api-1` и `app-api-2`;
-- средняя задержка доставки в локальном стенде составила 5,5 мс;
-- p50 составил 4,4 мс, p95 составил 9,5 мс;
+- средняя задержка доставки в локальном стенде составила 8,4 мс;
+- p50 составил 9,1 мс, p95 составил 11,6 мс;
 - результат не является полноценным нагрузочным тестом, но подтверждает повторяемость ключевого свойства на короткой серии запусков.
+
+## Проверка повторного вступления в группу
+
+Команда:
+
+```bash
+THESIS_SCENARIO=rejoin node scripts/realtime-scaleout-check.mjs
+```
+
+Результат:
+
+```json
+{
+  "ok": true,
+  "scenario": "rejoin",
+  "nodeBInitial": {
+    "serverInstanceId": "app-api-2",
+    "connectionId": "q7EhgNR3gkZ-r1WQDYQZwg"
+  },
+  "nodeBRecovered": {
+    "serverInstanceId": "app-api-2",
+    "connectionId": "C9L4om67BGOZwG8zwEQHxg"
+  },
+  "metrics": {
+    "reconnectAndRejoinMs": 12.9,
+    "secondDeliveryLatencyMs": 6.6
+  }
+}
+```
+
+Интерпретация:
+
+- после разрыва клиент получил новый `connectionId`;
+- клиент повторно вступил в группу отчета;
+- последующее событие `ReceiveReportPatch` было доставлено после повторной подписки.
+
+## Проверка отказа одного узла
+
+Команда:
+
+```bash
+THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000 node scripts/realtime-scaleout-check.mjs
+```
+
+Результат:
+
+```json
+{
+  "ok": true,
+  "scenario": "failover",
+  "stoppedContainer": "app-api-2",
+  "nodeBBeforeFailure": {
+    "serverInstanceId": "app-api-2",
+    "connectionId": "shWDsU7gAMAt0DMhTlpKmw"
+  },
+  "nodeBAfterFailover": {
+    "serverInstanceId": "app-api-1",
+    "connectionId": "jTO0YR68SSaLbtrtxLsq-w"
+  },
+  "metrics": {
+    "failoverReconnectAndRejoinMs": 240.3,
+    "secondDeliveryLatencyMs": 7.3
+  }
+}
+```
+
+Интерпретация:
+
+- клиент был подключен через nginx к `app-api-2`;
+- после остановки `app-api-2` клиент переподключился к `app-api-1`;
+- после повторного вступления в группу клиент получил новое событие;
+- режим подтверждает восстановление real-time контура при отказе одного экземпляра `app-api`.
 
 ## Результат без Redis backplane
 
@@ -170,8 +249,9 @@ docker exec nginx_app_thesis nginx -t
 - обе compose-конфигурации валидны;
 - `nginx -t` подтверждает корректность конфигурации;
 - автоматизированный сценарий real-time smoke воспроизводит отличие между режимами с backplane и без него;
-- серийный режим `THESIS_ITERATIONS=5` подтверждает повторяемость результата и собирает первичные метрики задержки.
+- серийный режим `THESIS_ITERATIONS=5` подтверждает повторяемость результата и собирает первичные метрики задержки;
+- режимы `THESIS_SCENARIO=rejoin` и `THESIS_SCENARIO=failover` подтверждают восстановление подписки после разрыва и остановки одного узла.
 
 ## Вывод
 
-Эксперимент подтверждает ключевой тезис ВКР: single-node ограничение real-time контура устраняется при переходе к архитектуре с несколькими экземплярами `app-api` и Redis backplane. В режиме без backplane воспроизводится фрагментация real-time пространства, а в режиме с backplane одно и то же событие доставляется клиенту, подключенному к другому серверному экземпляру. Серийный запуск из пяти итераций дополнительно показал повторяемость результата и дал первичную оценку задержки доставки.
+Эксперимент подтверждает ключевой тезис ВКР: single-node ограничение real-time контура устраняется при переходе к архитектуре с несколькими экземплярами `app-api` и Redis backplane. В режиме без backplane воспроизводится фрагментация real-time пространства, а в режиме с backplane одно и то же событие доставляется клиенту, подключенному к другому серверному экземпляру. Серийный запуск из пяти итераций дополнительно показал повторяемость результата и дал первичную оценку задержки доставки. Rejoin- и failover-сценарии подтвердили, что клиент может восстановить рабочую подписку после разрыва соединения и остановки одного узла.

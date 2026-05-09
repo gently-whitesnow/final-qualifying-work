@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 import zipfile
 from pathlib import Path
 
@@ -18,9 +19,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "materials" / "04-docx" / "vkr-draft-content.md"
 OUT_DIR = ROOT / "build" / "docx"
 OUT_DOCX = OUT_DIR / "vkr-draft-1.docx"
+PRACTICE_OUT_DOCX = OUT_DIR / "practice-report-draft-1.docx"
 ASSET_DIR = OUT_DIR / "assets"
 
 TITLE = "Разработка real-time интерфейса с поддержкой горизонтального масштабирования WebSocket-соединений для системы отслеживания задач"
+PRACTICE_TYPE = "производственная"
+PRACTICE_KIND = "преддипломная"
 STUDENT_FULL = "Зайцев Александр Сергеевич"
 STUDENT_INSTR = "Зайцевым Александром Сергеевичем"
 STUDENT_SHORT = "А.С. Зайцев"
@@ -469,6 +473,87 @@ def add_title_page(doc: Document):
     set_page_margins(section)
 
 
+def add_practice_title_page(doc: Document):
+    section = doc.sections[-1]
+    section.top_margin = Cm(1.0)
+    section.bottom_margin = Cm(0.8)
+
+    add_centered(doc, "МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ", size=11)
+    add_centered(doc, "федеральное государственное автономное образовательное учреждение высшего образования", size=10)
+    add_centered(doc, "«САНКТ-ПЕТЕРБУРГСКИЙ ГОСУДАРСТВЕННЫЙ УНИВЕРСИТЕТ", size=11)
+    add_centered(doc, "АЭРОКОСМИЧЕСКОГО ПРИБОРОСТРОЕНИЯ»", size=11)
+    add_centered(doc, "Кафедра № 43 «Компьютерных технологий и программной инженерии»", size=11, space_after=8)
+
+    table = doc.add_table(rows=4, cols=3)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    clear_table_borders(table)
+    set_table_cell_margins(table, 0)
+    for row in table.rows:
+        row.cells[0].width = Cm(7)
+        row.cells[1].width = Cm(4)
+        row.cells[2].width = Cm(5)
+    set_cell_text(table.cell(0, 0), "ОТЧЕТ ПО ПРАКТИКЕ", size=10, bold=True, align=WD_ALIGN_PARAGRAPH.LEFT)
+    set_cell_text(table.cell(0, 1), "ЗАЩИЩЕН С ОЦЕНКОЙ", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
+    set_cell_text(table.cell(1, 0), "Руководитель", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
+    set_cell_text(table.cell(1, 1), "____________________", size=10)
+    set_cell_text(table.cell(1, 2), SUPERVISOR, size=10)
+    set_cell_text(table.cell(2, 0), SUPERVISOR_ROLE, size=7)
+    set_cell_text(table.cell(2, 1), "подпись, дата", size=7)
+    set_cell_text(table.cell(2, 2), "инициалы, фамилия", size=7)
+
+    add_spacer(doc, 12)
+    add_centered(doc, "ОТЧЕТ ПО ПРАКТИКЕ", size=14, bold=True, space_after=4)
+
+    meta = doc.add_table(rows=7, cols=3)
+    clear_table_borders(meta)
+    set_table_cell_margins(meta, 0)
+    for row in meta.rows:
+        row.cells[0].width = Cm(5.2)
+        row.cells[1].width = Cm(5.2)
+        row.cells[2].width = Cm(5.2)
+    rows = [
+        ("вид практики", PRACTICE_TYPE, ""),
+        ("тип практики", PRACTICE_KIND, ""),
+        ("на тему индивидуального задания", TITLE, ""),
+        ("выполнен", STUDENT_INSTR, ""),
+        ("по направлению подготовки", "09.03.04", "Программная инженерия"),
+        ("направленности", "02", "Проектирование программных систем"),
+        ("Обучающийся группы №", GROUP, STUDENT_SHORT),
+    ]
+    for r, values in enumerate(rows):
+        for c, value in enumerate(values):
+            size = 8 if r in [0, 1, 2] and c == 0 else 10
+            set_cell_text(meta.cell(r, c), value, size=size, align=WD_ALIGN_PARAGRAPH.CENTER)
+            if (r in [0, 1, 2, 3, 4, 5, 6] and c > 0) or (r in [2] and c == 1):
+                set_bottom_border(meta.cell(r, c))
+        if r == 2:
+            meta.cell(r, 1).merge(meta.cell(r, 2))
+
+    add_spacer(doc, 6)
+    sig = doc.add_table(rows=2, cols=3)
+    clear_table_borders(sig)
+    set_table_cell_margins(sig, 0)
+    for row in sig.rows:
+        row.cells[0].width = Cm(5)
+        row.cells[1].width = Cm(5)
+        row.cells[2].width = Cm(5)
+    set_cell_text(sig.cell(0, 0), "номер", size=7)
+    set_cell_text(sig.cell(0, 1), "подпись, дата", size=7)
+    set_cell_text(sig.cell(0, 2), "инициалы, фамилия", size=7)
+    set_cell_text(sig.cell(1, 0), GROUP, size=10)
+    set_cell_text(sig.cell(1, 1), "____________________", size=10)
+    set_cell_text(sig.cell(1, 2), STUDENT_SHORT, size=10)
+    set_bottom_border(sig.cell(1, 0))
+    set_bottom_border(sig.cell(1, 1))
+    set_bottom_border(sig.cell(1, 2))
+
+    add_spacer(doc, 14)
+    add_centered(doc, CITY_YEAR, size=10)
+    doc.add_page_break()
+
+    set_page_margins(section)
+
+
 def add_assignment_page(doc: Document):
     add_centered(doc, "МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ", size=14)
     add_centered(doc, "федеральное государственное автономное образовательное учреждение высшего образования", size=13)
@@ -515,7 +600,7 @@ def add_abstract(doc: Document):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     facts = (
         "Выпускная квалификационная работа содержит введение, пять глав, заключение, "
-        "список использованных источников из 15 наименований и приложения. "
+        "список использованных источников из 20 наименований и приложения. "
         "Количество страниц, рисунков и таблиц уточняется после финальной верстки."
     )
     add_body_paragraph(doc, facts)
@@ -551,10 +636,53 @@ def add_toc_line(doc: Document, title: str, page: int, *, level: int = 1):
     set_run_font(run, size=11, bold=level == 1)
 
 
-def add_toc(doc: Document):
+def add_toc(doc: Document, *, kind: str = "vkr"):
     p = doc.add_heading("СОДЕРЖАНИЕ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    entries = [
+    if kind == "practice":
+        entries = [
+            (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 2),
+            (1, "ВВЕДЕНИЕ", 3),
+            (1, "1. Анализ предметной области и существующих подходов", 7),
+            (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 7),
+            (2, "1.2 WebSocket и SignalR как основа real-time контура", 8),
+            (2, "1.3 Ограничение single-node WebSocket-архитектуры", 8),
+            (2, "1.4 Сравнение подходов к масштабированию", 9),
+            (2, "1.5 Вывод по главе", 10),
+            (1, "2. Анализ целевой системы и постановка задачи практики", 11),
+            (2, "2.1 Характеристика целевой системы", 11),
+            (2, "2.2 Исходная реализация real-time взаимодействия", 11),
+            (2, "2.3 Требования к разрабатываемому решению", 12),
+            (2, "2.4 Постановка задачи", 13),
+            (1, "3. Проектирование масштабируемого real-time контура", 14),
+            (2, "3.1 Исходная архитектура", 14),
+            (2, "3.2 Целевая архитектура", 14),
+            (2, "3.3 Поток real-time события", 15),
+            (2, "3.4 Модель групп и повторной подписки", 16),
+            (2, "3.5 Диагностический контур", 17),
+            (1, "4. Выполнение индивидуального задания", 18),
+            (2, "4.1 Организация работ", 18),
+            (2, "4.2 Изменения backend", 18),
+            (2, "4.3 Проверочный клиент", 19),
+            (2, "4.4 Инфраструктурные изменения", 19),
+            (2, "4.5 Автоматизированный сценарий проверки", 20),
+            (1, "5. Результаты практики и оценка решения", 22),
+            (2, "5.1 Цель и программа испытаний", 22),
+            (2, "5.2 Стенд испытаний", 22),
+            (2, "5.3 Результат без Redis backplane", 23),
+            (2, "5.4 Результат с Redis backplane", 23),
+            (2, "5.5 Серийная проверка и задержка доставки", 24),
+            (2, "5.6 Проверка восстановления соединения и отказа узла", 24),
+            (2, "5.7 Сравнительная таблица результатов", 26),
+            (2, "5.8 Проверка входной точки стенда", 27),
+            (2, "5.9 Ограничения эксперимента", 27),
+            (2, "5.10 Вывод по испытаниям", 27),
+            (1, "ЗАКЛЮЧЕНИЕ", 27),
+            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 29),
+            (1, "ПРИЛОЖЕНИЕ А", 31),
+        ]
+    else:
+        entries = [
         (1, "РЕФЕРАТ", 1),
         (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 3),
         (1, "ВВЕДЕНИЕ", 4),
@@ -587,20 +715,21 @@ def add_toc(doc: Document):
         (2, "5.3 Результат без Redis backplane", 23),
         (2, "5.4 Результат с Redis backplane", 23),
         (2, "5.5 Серийная проверка и задержка доставки", 24),
-        (2, "5.6 Сравнительная таблица результатов", 25),
-        (2, "5.7 Проверка входной точки стенда", 25),
-        (2, "5.8 Ограничения эксперимента", 25),
-        (2, "5.9 Вывод по испытаниям", 26),
-        (1, "ЗАКЛЮЧЕНИЕ", 26),
-        (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 28),
-        (1, "ПРИЛОЖЕНИЕ А", 30),
-    ]
+        (2, "5.6 Проверка восстановления соединения и отказа узла", 24),
+        (2, "5.7 Сравнительная таблица результатов", 26),
+        (2, "5.8 Проверка входной точки стенда", 26),
+        (2, "5.9 Ограничения эксперимента", 26),
+        (2, "5.10 Вывод по испытаниям", 27),
+        (1, "ЗАКЛЮЧЕНИЕ", 27),
+        (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 29),
+        (1, "ПРИЛОЖЕНИЕ А", 31),
+        ]
     for level, title, page in entries:
         add_toc_line(doc, title, page, level=level)
     doc.add_page_break()
 
 
-def add_abbreviations(doc: Document):
+def add_abbreviations(doc: Document, *, kind: str = "vkr"):
     p = doc.add_heading("ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     data = [
@@ -614,8 +743,17 @@ def add_abbreviations(doc: Document):
         ("UI", "User Interface, пользовательский интерфейс"),
         ("URL", "Uniform Resource Locator, адрес ресурса"),
         ("WebSocket", "сетевой протокол двусторонней связи поверх одного TCP-соединения"),
-        ("ВКР", "выпускная квалификационная работа"),
     ]
+    if kind == "vkr":
+        data.append(("ВКР", "выпускная квалификационная работа"))
+    else:
+        data.extend(
+            [
+                ("БД", "база данных"),
+                ("ИЗ", "индивидуальное задание"),
+                ("ПО", "программное обеспечение"),
+            ]
+        )
     table = doc.add_table(rows=1, cols=2)
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -700,10 +838,16 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
     if not rows:
         return table_idx
 
+    captions = {
+        "Подход": "Сравнение подходов к масштабированию WebSocket-соединений",
+        "Режим": "Сравнительная таблица результатов испытаний",
+    }
+    caption_text = captions.get(rows[0][0], "Сравнительные данные")
+
     cap = doc.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
     cap.paragraph_format.first_line_indent = Cm(0)
-    run = cap.add_run(f"Таблица {table_idx} — {rows[0][0] if rows else 'Сравнительные данные'}")
+    run = cap.add_run(f"Таблица {table_idx} — {caption_text}")
     set_run_font(run, size=12, bold=True)
 
     table = doc.add_table(rows=1, cols=len(rows[0]))
@@ -721,11 +865,56 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
 def add_sources_as_numbered_list(doc: Document, source_lines: list[str]):
     p = doc.add_heading("СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for line in source_lines:
+    for index, line in enumerate(source_lines, start=1):
         m = re.match(r"\d+\.\s+(.*)", line.strip())
         if not m:
             continue
-        add_list_item(doc, m.group(1), numbered=True)
+        p = doc.add_paragraph(style="Normal")
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.paragraph_format.first_line_indent = Cm(0)
+        p.paragraph_format.left_indent = Cm(0.75)
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.space_after = Pt(3)
+        run = p.add_run(f"{index}. {m.group(1)}")
+        set_run_font(run, size=12)
+
+
+def transform_for_practice(text: str) -> str:
+    replacements = {
+        "## 2. Анализ целевой системы и постановка задачи": "## 2. Анализ целевой системы и постановка задачи практики",
+        "## 4. Реализация решения в целевой системе": "## 4. Выполнение индивидуального задания",
+        "## 5. Испытания и оценка результатов": "## 5. Результаты практики и оценка решения",
+        "Цель работы: разработать и исследовать real-time интерфейс": "Цель преддипломной практики: разработать и исследовать real-time интерфейс",
+        "Для достижения цели поставлены следующие задачи:": "В ходе практики решались следующие задачи:",
+        "Новизна работы заключается": "Результатом практики является",
+        "Элемент новизны работы заключается": "Результатом практики является",
+        "В рамках работы не разрабатывается новый сетевой протокол, но выполняется авторская композиция": "В рамках практики не разрабатывался новый сетевой протокол, но была выполнена авторская композиция",
+        "Практическая значимость работы состоит": "Практическая значимость результатов практики состоит",
+        "В рамках ВКР": "В рамках преддипломной практики",
+        "Для цели данной ВКР": "Для цели преддипломной практики",
+        "Работа по ВКР ведется": "Работа по индивидуальному заданию ведется",
+        "Такой подход важен для ВКР": "Такой подход важен для отчета по практике",
+        "Для ВКР подготовлен отдельный compose-стенд": "Для практики подготовлен отдельный compose-стенд",
+        "В ходе работы была рассмотрена": "В ходе преддипломной практики была рассмотрена",
+        "В отдельной ветке проекта реализована": "При выполнении индивидуального задания в отдельной ветке проекта реализована",
+        "Полученные результаты имеют практическую значимость": "Полученные в ходе практики результаты имеют практическую значимость",
+        "заявленный тезис работы": "заявленный результат практики",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    text = text.replace(
+        "Научно-техническая проблема работы состоит",
+        "Основная задача преддипломной практики состоит",
+    )
+    text = text.replace(
+        "Объектом исследования являются",
+        "Объектом рассмотрения в отчете являются",
+    )
+    text = text.replace(
+        "Предметом исследования являются",
+        "Предметом практической работы являются",
+    )
+    return text
 
 
 def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
@@ -824,11 +1013,16 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
         add_sources_as_numbered_list(doc, source_lines)
 
 
-def add_appendices(doc: Document):
+def add_appendices(doc: Document, *, kind: str = "vkr"):
     doc.add_page_break()
     p = doc.add_heading("ПРИЛОЖЕНИЕ А", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     add_centered(doc, "Фрагменты конфигурации стенда и результаты испытаний", bold=True)
+    if kind == "practice":
+        add_body_paragraph(
+            doc,
+            "Приложение относится к доказательной базе выполнения индивидуального задания по производственной преддипломной практике.",
+        )
     add_body_paragraph(
         doc,
         "В приложении должны быть приведены фрагменты `docker-compose.thesis.yml`, `docker-compose.thesis.no-backplane.yml`, `upstreams.thesis.conf`, настройки SignalR с `AddStackExchangeRedis`, диагностического метода `GetConnectionDiagnosticsAsync`, минимального проверочного клиента, а также выводы автоматизированного сценария проверки.",
@@ -857,7 +1051,7 @@ def audit_docx(path: Path):
                 raise RuntimeError(f"Forbidden marker in document.xml: {marker}")
 
 
-def main():
+def build_document(kind: str = "vkr"):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     figure_paths = ensure_figures()
     doc = Document()
@@ -866,23 +1060,38 @@ def main():
     set_page_margins(doc.sections[0])
     doc.sections[0].footer.is_linked_to_previous = False
 
-    add_title_page(doc)
-    add_assignment_page(doc)
+    if kind == "practice":
+        add_practice_title_page(doc)
+    else:
+        add_title_page(doc)
+        add_assignment_page(doc)
 
     body_section = doc.add_section(WD_SECTION.NEW_PAGE)
     set_page_margins(body_section)
     set_start_page_number(body_section, 1)
     add_page_number_footer(body_section)
 
-    add_abstract(doc)
-    add_toc(doc)
-    add_abbreviations(doc)
-    process_markdown(doc, SOURCE.read_text(encoding="utf-8"), figure_paths)
-    add_appendices(doc)
+    if kind == "vkr":
+        add_abstract(doc)
+    add_toc(doc, kind=kind)
+    add_abbreviations(doc, kind=kind)
+    text = SOURCE.read_text(encoding="utf-8")
+    if kind == "practice":
+        text = transform_for_practice(text)
+    process_markdown(doc, text, figure_paths)
+    add_appendices(doc, kind=kind)
 
-    doc.save(OUT_DOCX)
-    audit_docx(OUT_DOCX)
-    print(OUT_DOCX)
+    out_docx = PRACTICE_OUT_DOCX if kind == "practice" else OUT_DOCX
+    doc.save(out_docx)
+    audit_docx(out_docx)
+    print(out_docx)
+
+
+def main(kind: str | None = None):
+    selected = kind or ("practice" if "--practice" in sys.argv else "vkr")
+    if selected not in {"vkr", "practice"}:
+        raise ValueError(f"Unknown document kind: {selected}")
+    build_document(selected)
 
 
 if __name__ == "__main__":
