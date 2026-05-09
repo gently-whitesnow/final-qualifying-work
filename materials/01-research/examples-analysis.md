@@ -4,9 +4,9 @@
 
 Распакованные примеры:
 
-- `/Users/gently/projects/final-qualifying-work/materials/examples_extracted/examples/2025_09_4132_Гусев_И_Е.pdf`
-- `/Users/gently/projects/final-qualifying-work/materials/examples_extracted/examples/2025_09_Z0431_Кузьмин_И_А.pdf`
-- `/Users/gently/projects/final-qualifying-work/materials/examples_extracted/examples/2025_09_Z0431_Орлов_В_И.pdf`
+- `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/examples_extracted/examples/2025_09_4132_Гусев_И_Е.pdf`
+- `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/examples_extracted/examples/2025_09_Z0431_Кузьмин_И_А.pdf`
+- `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/examples_extracted/examples/2025_09_Z0431_Орлов_В_И.pdf`
 
 ## Что видно по структуре
 
@@ -141,4 +141,3 @@
 Примеры показывают, что хорошая ВКР у вас должна выглядеть не как "я сделал фичу на сокетах", а как:
 
 `я проанализировал проблему real-time взаимодействия, выявил ограничение существующей архитектуры, спроектировал масштабируемый контур, реализовал его в отдельной ветке и подтвердил результат испытаниями`
-

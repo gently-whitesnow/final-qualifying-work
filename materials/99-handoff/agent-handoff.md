@@ -8,16 +8,16 @@
 
 ## Ключевые материалы
 
-- Общий контекст и тема: `/Users/gently/projects/final-qualifying-work/readme.md`
-- Вопросы и ответы по индивидуальному заданию: `/Users/gently/projects/final-qualifying-work/materials/questions.md`
-- Предварительное техническое исследование: `/Users/gently/projects/final-qualifying-work/materials/code-research.md`
-- Наброски по структуре и ограничениям: `/Users/gently/projects/final-qualifying-work/materials/insights.md`
-- Методические требования по практике: `/Users/gently/projects/final-qualifying-work/materials/Практика2026заочное.pdf`
-- Учебно-методическое пособие по отчетам: `/Users/gently/projects/final-qualifying-work/materials/Программная_инженерия._Требования_к_подготовке_и_содержанию_отчетов_по_практике.pdf`
-- Шаблон индивидуального задания: `/Users/gently/projects/final-qualifying-work/materials/ИндивидуальноеЗадание2026заоч.docx`
-- Шаблон титульного листа отчета: `/Users/gently/projects/final-qualifying-work/materials/ТитульныйЛист2026заочное.docx`
-- Шаблон презентации по практике: `/Users/gently/projects/final-qualifying-work/materials/ШаблонПДП2026.pptx`
-- Черновик содержательной части ВКР: `/Users/gently/projects/final-qualifying-work/materials/vkr-draft-content.md`
+- Общий контекст и тема: `/Users/gently/projects/final-qualifying-work/README.md`
+- Вопросы и ответы по индивидуальному заданию: `/Users/gently/projects/final-qualifying-work/materials/01-research/questions.md`
+- Предварительное техническое исследование: `/Users/gently/projects/final-qualifying-work/materials/01-research/code-research.md`
+- Наброски по структуре и ограничениям: `/Users/gently/projects/final-qualifying-work/materials/01-research/insights.md`
+- Методические требования по практике: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Практика2026заочное.pdf`
+- Учебно-методическое пособие по отчетам: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Программная_инженерия._Требования_к_подготовке_и_содержанию_отчетов_по_практике.pdf`
+- Шаблон индивидуального задания: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ИндивидуальноеЗадание2026заоч.docx`
+- Шаблон титульного листа отчета: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ТитульныйЛист2026заочное.docx`
+- Шаблон презентации по практике: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ШаблонПДП2026.pptx`
+- Черновик содержательной части ВКР: `/Users/gently/projects/final-qualifying-work/materials/04-docx/vkr-draft-content.md`
 
 ## Утвержденная тема
 

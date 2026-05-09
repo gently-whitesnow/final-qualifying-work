@@ -6,12 +6,12 @@
 
 ## Входные данные
 
-- Черновик содержания: `/Users/gently/projects/final-qualifying-work/materials/vkr-draft-content.md`
-- Методические требования: `/Users/gently/projects/final-qualifying-work/materials/Практика2026заочное.pdf`
-- Пособие по оформлению: `/Users/gently/projects/final-qualifying-work/materials/Программная_инженерия._Требования_к_подготовке_и_содержанию_отчетов_по_практике.pdf`
-- Индивидуальное задание: `/Users/gently/projects/final-qualifying-work/materials/ИндивидуальноеЗадание2026заоч.docx`
-- Шаблон титульного листа практики: `/Users/gently/projects/final-qualifying-work/materials/ТитульныйЛист2026заочное.docx`
-- Примеры ВКР: `/Users/gently/projects/final-qualifying-work/materials/examples_extracted/examples`
+- Черновик содержания: `/Users/gently/projects/final-qualifying-work/materials/04-docx/vkr-draft-content.md`
+- Методические требования: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Практика2026заочное.pdf`
+- Пособие по оформлению: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Программная_инженерия._Требования_к_подготовке_и_содержанию_отчетов_по_практике.pdf`
+- Индивидуальное задание: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ИндивидуальноеЗадание2026заоч.docx`
+- Шаблон титульного листа практики: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ТитульныйЛист2026заочное.docx`
+- Примеры ВКР: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/examples_extracted/examples`
 
 ## Персональные данные
 
@@ -111,11 +111,11 @@ env TMPDIR=/private/tmp /Users/gently/.cache/codex-runtimes/codex-primary-runtim
 
 После render обязательно открыть PNG-страницы, проверить переносы, таблицы, подписи, колонтитулы и большие пустые места. Если что-то поехало — править генератор, а не итоговый `.docx` руками, затем пересобирать.
 
-На текущей машине `soffice`/LibreOffice может отсутствовать. В этом случае визуальный render-gate пропускается только временно, а итоговый документ считается черновиком, пока не пройдет визуальную проверку.
+На текущей машине LibreOffice установлен, `soffice` доступен по пути `/opt/homebrew/bin/soffice`.
 
 ## Правила доработки
 
-- Основные правки текста сначала вносить в `vkr-draft-content.md`, затем пересобирать `.docx`.
+- Основные правки текста сначала вносить в `materials/04-docx/vkr-draft-content.md`, затем пересобирать `.docx`.
 - Правки оформления вносить в `scripts/build_vkr_docx.py`.
 - Не править вручную сгенерированный `.docx`, если изменение нужно сохранить воспроизводимым.
 - Если Word используется для финального обновления оглавления, это нужно зафиксировать в журнале.

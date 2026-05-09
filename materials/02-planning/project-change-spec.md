@@ -241,7 +241,7 @@
 - `materials/metrics-plan.md`
 - `materials/architecture-as-is.md`
 - `materials/architecture-to-be.md`
-- `materials/runbook-thesis-stand.md`
+- `materials/03-proof-stand/runbook-thesis-stand.md`
 
 ## 11. Рекомендуемый порядок реализации
 
@@ -261,4 +261,3 @@
 - наблюдаемость;
 - экспериментальную проверяемость;
 - наглядность доказательства межузловой доставки.
-

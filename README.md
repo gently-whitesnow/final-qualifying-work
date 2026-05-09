@@ -1,12 +1,57 @@
-# Репозиторий для написания выпускной квалификационной работы
+# ВКР: real-time интерфейс и масштабирование WebSocket-соединений
 
-Пример фигмы:
-https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
+Репозиторий хранит материалы, план, доказательную базу и воспроизводимую сборку DOCX для ВКР.
 
-https://learn.microsoft.com/en-us/aspnet/core/signalr/scale?view=aspnetcore-10.0
+## Тема
 
-Название темы:
-"Разработка real-time интерфейса с поддержкой горизонтального масштабирования WebSocket-соединений для системы отслеживания задач"
+«Разработка real-time интерфейса с поддержкой горизонтального масштабирования WebSocket-соединений для системы отслеживания задач».
 
-Тезис:
-"я разработал и исследовал распределённый real-time контур для совместной работы над сущностями системы, устранив ограничение single-node WebSocket-архитектуры"
+## Рабочий тезис
+
+Разработан и исследован распределенный real-time контур для совместной работы над сущностями системы, устраняющий ограничение single-node WebSocket-архитектуры.
+
+## Основные пути
+
+- Репозиторий ВКР: `/Users/gently/projects/final-qualifying-work`
+- Целевой проект: `/Users/gently/projects/bugreport-root/bugget`
+- Ветка разработки в целевом проекте: `thesis/realtime-scaleout`
+- Backend целевого проекта: `/Users/gently/projects/bugreport-root/bugget/backend/bugget-api`
+
+## Структура
+
+- `materials/00-source-documents/` — исходные методички, шаблоны, примеры и архивы.
+- `materials/01-research/` — анализ, вопросы, deep-research промпты и заметки по примерам.
+- `materials/02-planning/` — планы реализации, спецификация изменений, стратегия доказательства.
+- `materials/03-proof-stand/` — runbook стенда и лог эксперимента.
+- `materials/04-docx/` — источник текста ВКР и pipeline сборки DOCX.
+- `materials/99-handoff/` — контекст для следующего агента.
+- `scripts/` — воспроизводимые генераторы.
+- `build/docx/` — собранный DOCX, сгенерированные иллюстрации и render-QA.
+
+## Актуальные артефакты
+
+- Черновик ВКР: `build/docx/vkr-draft-1.docx`
+- Источник контента: `materials/04-docx/vkr-draft-content.md`
+- Генератор DOCX: `scripts/build_vkr_docx.py`
+- Pipeline DOCX: `materials/04-docx/docx-pipeline.md`
+- Handoff: `materials/99-handoff/agent-handoff.md`
+
+## Сборка DOCX
+
+```bash
+cd /Users/gently/projects/final-qualifying-work
+/Users/gently/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_vkr_docx.py
+```
+
+## Render-QA
+
+```bash
+cd /Users/gently/projects/final-qualifying-work
+env TMPDIR=/private/tmp /Users/gently/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 \
+  /Users/gently/.codex/plugins/cache/openai-primary-runtime/documents/26.506.11943/skills/documents/render_docx.py \
+  build/docx/vkr-draft-1.docx \
+  --output_dir build/docx/rendered \
+  --emit_pdf
+```
+
+Правило проекта: править исходный Markdown или генератор, а не руками собранный DOCX.

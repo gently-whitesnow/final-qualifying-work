@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "materials" / "vkr-draft-content.md"
+SOURCE = ROOT / "materials" / "04-docx" / "vkr-draft-content.md"
 OUT_DIR = ROOT / "build" / "docx"
 OUT_DOCX = OUT_DIR / "vkr-draft-1.docx"
 ASSET_DIR = OUT_DIR / "assets"
