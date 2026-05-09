@@ -10,6 +10,8 @@
 
 `/Users/gently/projects/bugreport-root/bugget`
 
+В материалах ВКР стенд описывается как `app-api`: это изолированный контур проверки real-time масштабирования, не зависящий от дополнительных продуктовых сервисов и полноценного пользовательского интерфейса.
+
 ## Основной стенд с Redis backplane
 
 ```bash
@@ -17,31 +19,25 @@ cd /Users/gently/projects/bugreport-root/bugget
 docker compose -f docker-compose.thesis.yml up -d --build
 ```
 
-Запуск фронтенда для демонстрации через nginx:
+Состав стенда:
+
+- `postgres_app_thesis`;
+- `redis_app_thesis`;
+- `app-api-1`;
+- `app-api-2`;
+- `nginx_app_thesis`.
+
+Быстрая проверка nginx-входа:
 
 ```bash
-cd /Users/gently/projects/bugreport-root/bugget/frontend
-VITE_SIGNALR_SKIP_NEGOTIATION=true npm run dev -- --host 0.0.0.0
+curl -sS http://localhost:18080/health
 ```
 
-Открывать:
+Ожидаемый результат:
 
-`http://localhost:18080`
-
-Быстрая проверка, что UI-стенд поднялся корректно:
-
-```bash
-curl -sS -D - http://localhost:18080/ -o /tmp/bugget-thesis-root.html
-curl -sS -D - http://localhost:18080/login -o /tmp/bugget-thesis-login.html
-curl -sS -D - http://localhost:18080/@vite/client -o /tmp/bugget-thesis-vite-client.js
-curl -sS -D - http://localhost:18080/env.js -o /tmp/bugget-thesis-env.js
+```text
+ok
 ```
-
-Ожидаемо:
-
-- `/` возвращает `302` с `Location: /login?next=/`;
-- `/login`, `/@vite/client` и `/env.js` возвращают `200 OK`;
-- `/@vite/client` и `/env.js` возвращают JavaScript, а не HTML fallback.
 
 ## Стенд без Redis backplane
 
@@ -52,62 +48,48 @@ cd /Users/gently/projects/bugreport-root/bugget
 docker compose -f docker-compose.thesis.yml -f docker-compose.thesis.no-backplane.yml up -d --build
 ```
 
-Фронтенд запускать так же:
-
-```bash
-cd /Users/gently/projects/bugreport-root/bugget/frontend
-VITE_SIGNALR_SKIP_NEGOTIATION=true npm run dev -- --host 0.0.0.0
-```
-
 ## Остановка стенда
 
 ```bash
 cd /Users/gently/projects/bugreport-root/bugget
-docker compose -f docker-compose.thesis.yml down -v
+docker compose -f docker-compose.thesis.yml down -v --remove-orphans
 ```
 
 Если запускался режим без backplane:
 
 ```bash
 cd /Users/gently/projects/bugreport-root/bugget
-docker compose -f docker-compose.thesis.yml -f docker-compose.thesis.no-backplane.yml down -v
+docker compose -f docker-compose.thesis.yml -f docker-compose.thesis.no-backplane.yml down -v --remove-orphans
 ```
-
-## Что смотреть при демонстрации
-
-В dev-режиме frontend показывает debug-badge в правом нижнем углу:
-
-- идентификатор экземпляра backend;
-- укороченный `connectionId`.
-
-Это нужно для скриншотов и доказательства, что разные клиенты подключены к разным экземплярам `bugget-api`.
 
 ## Базовая логика проверки
 
 1. Запустить режим без backplane.
-2. Открыть два клиента и добиться подключения к разным узлам.
-3. Выполнить изменение сущности отчета.
-4. Зафиксировать, что событие не доставляется между узлами.
-5. Запустить режим с Redis backplane.
-6. Повторить тот же сценарий.
-7. Зафиксировать, что событие доставляется между узлами.
+2. Подключить проверочный клиент A к `app-api-1`.
+3. Подключить проверочный клиент B к `app-api-2`.
+4. Выполнить изменение сущности отчета через `app-api-1`.
+5. Зафиксировать, что событие не доставляется клиенту на `app-api-2`.
+6. Запустить режим с Redis backplane.
+7. Повторить тот же сценарий.
+8. Зафиксировать, что событие доставляется между узлами.
 
 ## Автоматизированная проверка межузловой доставки
 
 После запуска стенда можно выполнить сценарий, который:
 
-- создает отчет через `bugget-api-1`;
-- подключает один SignalR-клиент к `bugget-api-1`;
-- подключает второй SignalR-клиент к `bugget-api-2`;
+- создает отчет через `app-api-1`;
+- подключает один SignalR-клиент к `app-api-1`;
+- подключает второй SignalR-клиент к `app-api-2`;
 - подписывает обоих клиентов на группу отчета;
-- меняет заголовок отчета через `bugget-api-1`;
-- проверяет, получил ли клиент на `bugget-api-2` событие `ReceiveReportPatch`.
+- меняет заголовок отчета через `app-api-1`;
+- проверяет, получил ли клиент на `app-api-2` событие `ReceiveReportPatch`;
+- выводит `serverInstanceId`, `connectionId`, идентификатор отчета и payload полученного события.
 
-Команда:
+Команда из корня проекта:
 
 ```bash
-cd /Users/gently/projects/bugreport-root/bugget/frontend
-npm run test:realtime-scaleout
+cd /Users/gently/projects/bugreport-root/bugget
+node scripts/realtime-scaleout-check.mjs
 ```
 
 Ожидаемая интерпретация:
@@ -118,8 +100,9 @@ npm run test:realtime-scaleout
 ## Полезные логи
 
 ```bash
-docker logs bugget-api-1 --tail 200
-docker logs bugget-api-2 --tail 200
+docker logs app-api-1 --tail 200
+docker logs app-api-2 --tail 200
+docker logs nginx_app_thesis --tail 200
 ```
 
 В логах должны быть видны:
@@ -130,18 +113,19 @@ docker logs bugget-api-2 --tail 200
 - имя real-time события;
 - `EventId` для отправленных событий.
 
-## Проверки сборки
+## Проверки сборки и конфигурации
+
+Docker Compose:
+
+```bash
+cd /Users/gently/projects/bugreport-root/bugget
+docker compose -f docker-compose.thesis.yml config --quiet
+docker compose -f docker-compose.thesis.yml -f docker-compose.thesis.no-backplane.yml config --quiet
+```
 
 Backend:
 
 ```bash
 cd /Users/gently/projects/bugreport-root/bugget/backend/bugget-api
 dotnet build Bugget.sln
-```
-
-Frontend:
-
-```bash
-cd /Users/gently/projects/bugreport-root/bugget/frontend
-npm run build
 ```

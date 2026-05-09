@@ -34,14 +34,14 @@
 - Реальная доработка проекта является доказательной базой работы.
 - Разработку нужно вести в отдельной ветке, без мержей в `main`; ветка нужна именно под ВКР.
 - Для доказательства результата достаточно минимального, но убедительного стенда.
-- Можно использовать весь репозиторий `/Users/gently/projects/bugreport-root/bugget`, включая `frontend`, `nginx` и `docker-compose`.
+- Можно использовать весь репозиторий `/Users/gently/projects/bugreport-root/bugget`, включая `nginx` и `docker-compose`. Полноценный пользовательский интерфейс не нужно включать в доказательный контур ВКР: достаточно минимального проверочного клиента.
 - Примеры из `examples.zip` разрешено распаковать и использовать как ориентир по структуре.
 
 ## Ключевые технические наблюдения
 
-- В `bugget-api` уже есть SignalR-хаб `ReportPageHub` и endpoint `/v1/report-page-hub`.
+- В backend-коде целевой системы уже есть SignalR-хаб `ReportPageHub` и endpoint `/v1/report-page-hub`.
 - Real-time события отправляются в групповые каналы по контексту репорта через `ReportPageHubClient`.
-- В текущем `nginx`-конфиге upstream `app-api` указывает на один экземпляр `bugget-api`, что подтверждает single-node ограничение.
+- В базовом `nginx`-контуре upstream `app-api` указывает на один экземпляр backend-сервиса, что подтверждает single-node ограничение.
 - В корневом `docker-compose.yml` уже есть Redis, поэтому тема горизонтального масштабирования через межузловую синхронизацию выглядит естественной и проверяемой.
 
 ## Ожидаемый конвейер работы
@@ -76,11 +76,10 @@
 - Рабочая ветка продукта: `thesis/realtime-scaleout`.
 - Стенд с Redis backplane запускается через `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml`.
 - Режим без backplane запускается через комбинацию `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml` и `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.no-backplane.yml`.
-- Для thesis-стенда добавлен отдельный nginx-конфиг `/Users/gently/projects/bugreport-root/bugget/nginx/nginx.thesis.conf`, чтобы auth-редиректы сохраняли внешний порт `18080`.
-- Для Vite dev server через nginx добавлен snippet `/Users/gently/projects/bugreport-root/bugget/nginx/vite-dev.thesis.conf`.
-- Для self-hosted dev-режима добавлен `/Users/gently/projects/bugreport-root/bugget/frontend/public/env.js`; production Dockerfile self-hosted все равно подменяет итоговый `env.js` из `env.template.js`.
-- UI-стенд открывается через `http://localhost:18080` после запуска frontend dev server командой `VITE_SIGNALR_SKIP_NEGOTIATION=true npm run dev -- --host 0.0.0.0`.
-- Автоматизированный сценарий `npm run test:realtime-scaleout` подтвердил доставку события между `bugget-api-1` и `bugget-api-2` при включенном Redis backplane.
+- Для thesis-стенда добавлен отдельный nginx-конфиг `/Users/gently/projects/bugreport-root/bugget/nginx/nginx.thesis.conf`, который проксирует HTTP/WebSocket-трафик на upstream `app-api` и не зависит от дополнительных продуктовых сервисов.
+- Сервисы стенда в compose названы `app-api-1`, `app-api-2`, `redis_app_thesis`, `postgres_app_thesis`, `nginx_app_thesis`.
+- Минимальный проверочный клиент находится в `/Users/gently/projects/bugreport-root/bugget/scripts/realtime-scaleout-check.mjs`.
+- Автоматизированный сценарий `node scripts/realtime-scaleout-check.mjs` или `npm run test:realtime-scaleout` подтвердил доставку события между `app-api-1` и `app-api-2` при включенном Redis backplane.
 - При отключенном backplane тот же сценарий завершался timeout, что фиксирует исходное ограничение multi-instance режима.
 
 ## Важные ограничения по оформлению
@@ -91,3 +90,12 @@
 - Интернет-источники: не более 50 процентов списка.
 - Иностранные источники: желательно, но не более 50 процентов списка.
 - Базовое оформление: Times New Roman, 14 pt, полуторный интервал, ГОСТ 7.32-2017, список источников по ГОСТ 7.0.100-2018.
+
+## Текущий статус DOCX
+
+- Актуальный DOCX: `/Users/gently/projects/final-qualifying-work/build/docx/vkr-draft-1.docx`.
+- Генератор DOCX: `/Users/gently/projects/final-qualifying-work/scripts/build_vkr_docx.py`.
+- Рендер для визуальной проверки: `/Users/gently/projects/final-qualifying-work/build/docx/rendered`.
+- В генератор добавлены три воспроизводимые иллюстрации: single-node архитектура, multi-instance архитектура с Redis backplane, поток события `ReceiveReportPatch`.
+- Титульный лист помещается на одну страницу, содержание статическое и синхронизировано с текущим render-проходом.
+- В актуальном DOCX нет старых маркеров `authorization-api`, `users-api`, `bugget-api-1`, `bugget-api-2`, `frontend`, `RealtimeDebugBadge`.
