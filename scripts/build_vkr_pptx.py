@@ -96,6 +96,48 @@ def shape(
       </p:sp>"""
 
 
+def connector(
+    sid: int,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    *,
+    color: str = ACCENT,
+    width: int = 15875,
+    head_end: str | None = None,
+    tail_end: str | None = "triangle",
+) -> str:
+    flip_h = "1" if x2 < x1 else "0"
+    flip_v = "1" if y2 < y1 else "0"
+    x_min = min(x1, x2)
+    y_min = min(y1, y2)
+    cx = max(abs(x2 - x1), 0.01)
+    cy = max(abs(y2 - y1), 0.01)
+    head_xml = f'<a:headEnd type="{head_end}"/>' if head_end else ""
+    tail_xml = f'<a:tailEnd type="{tail_end}"/>' if tail_end else ""
+    return f"""
+      <p:cxnSp>
+        <p:nvCxnSpPr>
+          <p:cNvPr id="{sid}" name="Connector {sid}"/>
+          <p:cNvCxnSpPr/>
+          <p:nvPr/>
+        </p:nvCxnSpPr>
+        <p:spPr>
+          <a:xfrm flipH="{flip_h}" flipV="{flip_v}">
+            <a:off x="{inch(x_min)}" y="{inch(y_min)}"/>
+            <a:ext cx="{inch(cx)}" cy="{inch(cy)}"/>
+          </a:xfrm>
+          <a:prstGeom prst="straightConnector1"><a:avLst/></a:prstGeom>
+          <a:ln w="{width}" cap="flat">
+            <a:solidFill><a:srgbClr val="{color}"/></a:solidFill>
+            {head_xml}
+            {tail_xml}
+          </a:ln>
+        </p:spPr>
+      </p:cxnSp>"""
+
+
 def title(sid: int, text: str, subtitle: str | None = None) -> str:
     parts = [
         shape(sid, 0.65, 0.45, 11.9, 0.72, text, fill="", line="", size=30, bold=True),
@@ -166,89 +208,206 @@ def title_slide(kind: str) -> str:
 
 
 def deck_slides(kind: str = "vkr") -> list[str]:
+    work_word = "практики" if kind == "practice" else "работы"
+    goal_label = "Цель преддипломной практики" if kind == "practice" else "Цель работы"
+
+    # Architecture slide layout — kept in one place so connectors line up with boxes
+    cliA = (1.0, 2.05, 1.8, 0.7)
+    cliB = (1.0, 4.10, 1.8, 0.7)
+    ngx = (3.6, 3.05, 1.5, 0.8)
+    api1 = (6.1, 2.05, 2.0, 0.7)
+    api2 = (6.1, 4.10, 2.0, 0.7)
+    rds = (9.1, 3.05, 2.4, 0.8)
+
+    def right_mid(box):
+        x, y, w, h = box
+        return x + w, y + h / 2
+
+    def left_mid(box):
+        x, y, w, h = box
+        return x, y + h / 2
+
+    def left_at(box, dy):
+        x, y, w, h = box
+        return x, y + h / 2 + dy
+
+    def right_at(box, dy):
+        x, y, w, h = box
+        return x + w, y + h / 2 + dy
+
     return [
         # 1. Title
         title_slide(kind),
 
-        # 2. Problem and thesis
-        title(10, "Проблема: single-node SignalR теряет события между узлами")
-        + shape(20, 0.75, 1.7, 5.7, 2.6,
-                "Без межузлового канала\nКаждый экземпляр знает только своих клиентов.\nСобытие, созданное на одном узле, не доходит до клиента на другом.",
-                fill=PANEL, size=18)
-        + shape(21, 6.75, 1.7, 5.7, 2.6,
-                "Цель работы\nВосстановить корректную доставку событий между клиентами, подключенными к разным экземплярам backend-сервиса.",
-                fill=SOFT, line=ACCENT, size=18, bold=True),
+        # 2. Проблема и цель работы
+        title(10, "Проблема и цель", "Single-node SignalR ограничивает горизонтальное масштабирование")
+        + shape(20, 0.75, 1.65, 5.85, 4.6,
+                "Проблема\n\n"
+                "Сведения о подключениях и группах SignalR хранятся в памяти процесса.\n\n"
+                "При нескольких экземплярах backend событие, созданное на одном узле, "
+                "не доходит до клиента, подключенного к другому узлу.\n\n"
+                "Real-time пространство фрагментируется на независимые острова.",
+                fill=PANEL, size=16)
+        + shape(21, 6.75, 1.65, 5.85, 4.6,
+                f"{goal_label}\n\n"
+                "Real-time интерфейс системы отслеживания задач, "
+                "в котором WebSocket-соединения обслуживаются несколькими экземплярами app-api, "
+                "а события об изменении сущностей доставляются клиентам "
+                "независимо от узла подключения.",
+                fill=SOFT, line=ACCENT, size=16, bold=True),
 
-        # 3. Target architecture
-        title(10, "Целевая архитектура")
-        + shape(20, 0.7, 1.85, 2.0, 0.7, "Клиент A", fill=PANEL, size=14, bold=True, align="ctr")
-        + shape(21, 0.7, 3.55, 2.0, 0.7, "Клиент B", fill=PANEL, size=14, bold=True, align="ctr")
-        + shape(22, 3.4, 2.7, 1.7, 0.85, "nginx", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
-        + shape(23, 5.8, 1.85, 2.1, 0.7, "app-api-1", fill=PANEL, size=14, bold=True, align="ctr")
-        + shape(24, 5.8, 3.55, 2.1, 0.7, "app-api-2", fill=PANEL, size=14, bold=True, align="ctr")
-        + shape(25, 8.55, 2.7, 2.5, 0.85, "Redis backplane", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
-        + shape(26, 0.7, 5.2, 11.5, 0.55,
-                "SignalR-события публикуются между экземплярами через Redis; группы остаются локальным runtime-состоянием.",
-                fill="", line="", size=14, text_color=MUTED, align="ctr"),
+        # 3. Анализ подходов к масштабированию
+        title(10, "Анализ подходов к масштабированию",
+              "Шесть рассмотренных вариантов; обоснован выбор Redis backplane")
+        + shape(20, 0.75, 1.7, 4.0, 1.45,
+                "Один экземпляр backend\nНет масштабирования; один узел — точка отказа",
+                fill=PANEL, size=13)
+        + shape(21, 4.85, 1.7, 4.0, 1.45,
+                "Несколько экземпляров без backplane\nReal-time пространство фрагментируется по узлам",
+                fill=PANEL, size=13)
+        + shape(22, 8.95, 1.7, 4.0, 1.45,
+                "Sticky sessions\nУдерживают клиента на узле, но не доставляют события на другие",
+                fill=PANEL, size=13)
+        + shape(23, 0.75, 3.30, 4.0, 1.45,
+                "Broker / event bus\nДаёт межузловую доставку, но требует схем событий и persistence",
+                fill=PANEL, size=13)
+        + shape(24, 4.85, 3.30, 4.0, 1.45,
+                "Managed real-time service\nУменьшает контроль над self-hosted контуром",
+                fill=PANEL, size=13)
+        + shape(25, 8.95, 3.30, 4.0, 1.45,
+                "Redis backplane для SignalR — выбрано\nself-hosted, без перестройки логики, transient pub/sub",
+                fill=SOFT, line=ACCENT, size=13, bold=True)
+        + shape(26, 0.75, 5.05, 12.2, 1.4,
+                "Критерии выбора: совместимость с self-hosted стендом, минимальная перестройка "
+                "доменной логики, наличие штатной поддержки в ASP.NET Core SignalR, "
+                "пригодность для transient UI-событий и воспроизводимость на локальном Docker Compose стенде.",
+                fill="", line="", size=12, text_color=MUTED),
 
-        # 4. What was built
-        title(10, "Что сделано")
-        + shape(20, 0.75, 1.7, 5.7, 1.2,
-                "1 · Redis backplane для SignalR\nКонфигурируется через REDIS_CONNECTION_STRING",
-                fill=PANEL, size=15)
-        + shape(21, 0.75, 3.0, 5.7, 1.2,
-                "2 · Диагностика узла\nSERVER_INSTANCE_ID, connectionId, machineName",
-                fill=PANEL, size=15)
-        + shape(22, 6.75, 1.7, 5.7, 1.2,
-                "3 · Стенд Docker Compose\napp-api-1, app-api-2, Redis, PostgreSQL, nginx",
-                fill=PANEL, size=15)
-        + shape(23, 6.75, 3.0, 5.7, 1.2,
-                "4 · Node.js-клиент\nDelivery, серия, rejoin, failover",
+        # 4. Целевая архитектура (со стрелками)
+        title(10, "Целевая архитектура",
+              "Два экземпляра app-api за nginx, общий Redis backplane для межузловой доставки")
+        + shape(20, *cliA, "Клиент A", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(21, *cliB, "Клиент B", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(22, *ngx, "nginx", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(23, *api1, "app-api-1", fill=PANEL, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(24, *api2, "app-api-2", fill=PANEL, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(25, *rds, "Redis backplane", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
+        # connectors
+        + connector(50, *right_mid(cliA), *left_at(ngx, -0.18))
+        + connector(51, *right_mid(cliB), *left_at(ngx, +0.18))
+        + connector(52, *right_at(ngx, -0.18), *left_mid(api1))
+        + connector(53, *right_at(ngx, +0.18), *left_mid(api2))
+        + connector(54, *right_mid(api1), *left_at(rds, -0.18),
+                    head_end="triangle", tail_end="triangle")
+        + connector(55, *right_mid(api2), *left_at(rds, +0.18),
+                    head_end="triangle", tail_end="triangle")
+        + shape(26, 0.7, 5.4, 12.0, 0.5,
+                "Событие публикуется в Redis · доставляется обоим узлам · группы SignalR остаются локальным runtime-состоянием",
+                fill="", line="", size=13, text_color=MUTED, align="ctr")
+        + shape(27, 0.7, 5.95, 12.0, 0.4,
+                "Оба экземпляра подключены к общей PostgreSQL; на схеме показан только канал real-time-доставки.",
+                fill="", line="", size=11, text_color=MUTED, align="ctr"),
+
+        # 5. Что сделано
+        title(10, "Что сделано", "Backend-конфигурация, диагностика, стенд и проверочный клиент")
+        + shape(20, 0.75, 1.7, 5.85, 2.4,
+                "1 · Redis backplane для SignalR\n\n"
+                "AddStackExchangeRedis с prefix app-api-realtime; включается переменной "
+                "REDIS_CONNECTION_STRING — один и тот же код в обоих режимах.",
+                fill=PANEL, line=ACCENT, size=14)
+        + shape(21, 0.75, 4.20, 5.85, 2.05,
+                "2 · Диагностический контур\n\n"
+                "SERVER_INSTANCE_ID, GetConnectionDiagnosticsAsync(), "
+                "логирование подключения, вступления в группу и отправки события.",
+                fill=PANEL, size=14)
+        + shape(22, 6.75, 1.7, 5.85, 2.4,
+                "3 · Multi-instance стенд\n\n"
+                "docker-compose.thesis.yml: app-api-1, app-api-2, Redis, PostgreSQL, nginx; "
+                "override .no-backplane.yml для воспроизведения исходной проблемы.",
+                fill=PANEL, size=14)
+        + shape(23, 6.75, 4.20, 5.85, 2.05,
+                "4 · Проверочный клиент на Node.js\n\n"
+                "realtime-scaleout-check.mjs: одиночная доставка, серия, rejoin, failover.",
+                fill=PANEL, size=14),
+
+        # 6. Программа испытаний
+        title(10, "Программа испытаний",
+              "Два режима по одному коду · четыре сценария проверки")
+        + shape(20, 0.75, 1.7, 5.85, 4.55,
+                "Два режима\n\n"
+                "• Multi-instance без Redis backplane — воспроизведение проблемы\n\n"
+                "• Multi-instance с Redis backplane — проверка решения\n\n"
+                "Один и тот же код, один и тот же сценарий; "
+                "отличие — значение REDIS_CONNECTION_STRING.",
+                fill=SOFT, line=ACCENT, size=15, bold=True)
+        + shape(21, 6.75, 1.7, 5.85, 4.55,
+                "Четыре сценария\n\n"
+                "• Одиночная cross-node доставка\n\n"
+                "• Серия из 5 итераций (THESIS_ITERATIONS)\n\n"
+                "• Rejoin после разрыва соединения\n\n"
+                "• Failover после остановки узла",
                 fill=PANEL, size=15),
 
-        # 5. Test stand and program
-        title(10, "Стенд и программа испытаний")
-        + shape(20, 0.75, 1.75, 5.7, 2.5,
-                "Два режима\n• С Redis backplane\n• Без Redis backplane\nОдин и тот же код, разница — переменная окружения.",
+        # 7. Главный результат — без / с backplane
+        title(10, "Главный результат",
+              "Один код и один сценарий — разница только в наличии Redis-канала")
+        + shape(20, 0.75, 1.7, 5.85, 3.6,
+                "Без backplane\n\n"
+                "ReceiveReportPatch\ntimed out · 10 000 мс\n\n"
+                "Событие, созданное на app-api-1, не дошло до клиента на app-api-2",
+                fill=WARN, line=ACCENT_2, size=18, bold=True, align="ctr")
+        + shape(21, 6.75, 1.7, 5.85, 3.6,
+                "С backplane\n\n"
+                "ok: true · ReceiveReportPatch получен\n"
+                "deliveryLatencyMs ≈ 9,5 мс\n\n"
+                "Клиент на app-api-2 получил событие с app-api-1",
+                fill=SOFT, line=ACCENT, size=18, bold=True, align="ctr")
+        + shape(22, 0.75, 5.55, 11.85, 0.85,
+                "Сопоставление двух режимов на одном стенде показывает причинную связь "
+                "между включением межузлового канала SignalR и успешной доставкой события.",
+                fill="", line="", size=13, text_color=MUTED, align="ctr"),
+
+        # 8. Дополнительные проверки: серия, rejoin, failover
+        title(10, "Дополнительные проверки",
+              "Повторяемость, повторное вступление в группу и восстановление после отказа узла")
+        + shape(20, 0.75, 1.75, 4.0, 4.5,
+                "Серия 5 итераций\n\n"
+                "successful 5 / 5\n\n"
+                "min 5,5 мс\navg 8,4 мс\np50 9,1 мс\np95 11,6 мс\n\n"
+                "Подтверждена повторяемость доставки.",
                 fill=SOFT, line=ACCENT, size=15)
-        + shape(21, 6.75, 1.75, 5.7, 2.5,
-                "Четыре сценария\n• Одиночная доставка\n• Серия из 5 итераций\n• Rejoin после разрыва\n• Failover узла",
+        + shape(21, 4.85, 1.75, 4.0, 4.5,
+                "Rejoin после разрыва\n\n"
+                "Новый connectionId\nповторный JoinReportGroupAsync\n\n"
+                "rejoin 12,9 мс\ndelivery 6,6 мс\n\n"
+                "Подтверждена повторная подписка.",
+                fill=PANEL, size=15)
+        + shape(22, 8.95, 1.75, 4.0, 4.5,
+                "Failover узла\n\n"
+                "Контейнер app-api-2 остановлен\nклиент переподключился через nginx к app-api-1\n\n"
+                "reconnect 240,3 мс\ndelivery 7,3 мс\n\n"
+                "Подтверждено восстановление после отказа узла.",
                 fill=PANEL, size=15),
 
-        # 6. Main result
-        title(10, "Главный результат")
-        + shape(20, 0.75, 1.7, 5.7, 2.6,
-                "Без backplane\ntimeout 10000 мс\nсобытие не доставлено",
-                fill=WARN, line=ACCENT_2, size=20, bold=True, align="ctr")
-        + shape(21, 6.75, 1.7, 5.7, 2.6,
-                "С backplane\nok: true · 5 из 5\np95 = 11,6 мс",
-                fill=SOFT, line=ACCENT, size=20, bold=True, align="ctr")
-        + shape(22, 0.75, 4.7, 11.7, 0.55,
-                "Один код, один сценарий — разница только в наличии межузлового канала.",
-                fill="", line="", size=14, text_color=MUTED, align="ctr"),
-
-        # 7. Resilience
-        title(10, "Устойчивость: rejoin и failover")
-        + shape(20, 0.75, 1.75, 5.7, 2.5,
-                "Rejoin после разрыва\nНовый connectionId, повторный JoinReportGroupAsync.\nСобытие после rejoin — 6,6 мс.",
-                fill=PANEL, size=15)
-        + shape(21, 6.75, 1.75, 5.7, 2.5,
-                "Failover узла\nКлиент переподключился через nginx с app-api-2 на app-api-1.\nreconnect + rejoin — 240,3 мс.",
-                fill=SOFT, line=ACCENT, size=15),
-
-        # 8. Conclusion
+        # 9. Вывод
         title(10, "Вывод")
-        + shape(20, 0.75, 1.85, 11.7, 1.4,
-                "Ограничение single-node WebSocket-архитектуры устранено за счёт распределённого real-time контура.",
-                fill=SOFT, line=ACCENT, size=20, bold=True, align="ctr")
-        + shape(21, 0.75, 3.55, 3.7, 1.7,
-                "Проблема\nБез backplane событие теряется между узлами.",
+        + shape(20, 0.75, 1.7, 11.85, 1.5,
+                f"Ограничение single-node WebSocket-архитектуры устранено за счёт распределённого real-time контура; "
+                f"тезис {work_word} подтверждён экспериментально.",
+                fill=SOFT, line=ACCENT, size=18, bold=True, align="ctr")
+        + shape(21, 0.75, 3.4, 3.85, 2.85,
+                "Проблема\n\n"
+                "Single-node SignalR: события не пересекают границу узла.",
                 fill=PANEL, size=14, bold=True)
-        + shape(22, 4.65, 3.55, 3.7, 1.7,
-                "Решение\nSignalR + Redis backplane + nginx + два app-api.",
+        + shape(22, 4.75, 3.4, 3.85, 2.85,
+                "Решение\n\n"
+                "SignalR + Redis backplane + nginx + два app-api; "
+                "общий код, конфигурация через переменную окружения.",
                 fill=PANEL, size=14, bold=True)
-        + shape(23, 8.55, 3.55, 3.7, 1.7,
-                "Доказательство\nDelivery, серия, rejoin, failover.",
+        + shape(23, 8.75, 3.4, 3.85, 2.85,
+                "Доказательство\n\n"
+                "Delivery (без / с) · серия 5 / 5 · rejoin · failover — "
+                "воспроизводимый Docker Compose стенд.",
                 fill=PANEL, size=14, bold=True),
     ]
 

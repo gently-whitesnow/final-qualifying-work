@@ -863,31 +863,6 @@ def set_row_as_header(row):
     existing.set(qn("w:val"), "true")
 
 
-def begin_landscape_section(doc: Document):
-    section = doc.add_section(WD_SECTION.NEW_PAGE)
-    section.orientation = WD_ORIENTATION.LANDSCAPE
-    section.page_width = Cm(29.7)
-    section.page_height = Cm(21.0)
-    section.top_margin = Cm(2)
-    section.bottom_margin = Cm(2)
-    section.left_margin = Cm(2)
-    section.right_margin = Cm(1.5)
-    clear_start_page_number(section)
-    add_page_number_footer(section)
-    return section
-
-
-def end_landscape_section(doc: Document):
-    section = doc.add_section(WD_SECTION.NEW_PAGE)
-    section.orientation = WD_ORIENTATION.PORTRAIT
-    section.page_width = Cm(21.0)
-    section.page_height = Cm(29.7)
-    set_page_margins(section)
-    clear_start_page_number(section)
-    add_page_number_footer(section)
-    return section
-
-
 def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
     rows = []
     for line in lines:
@@ -907,9 +882,6 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
     }
     caption_text = captions.get(rows[0][0], "Сравнительные данные")
     is_results_table = rows[0][0] == "Режим"
-
-    if is_results_table:
-        begin_landscape_section(doc)
 
     cap = doc.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -933,15 +905,14 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
             set_cell_text(cells[c], text, size=cell_size, align=WD_ALIGN_PARAGRAPH.LEFT)
 
     if is_results_table:
-        usable_width = Cm(26.2)
-        weights = [1.6, 1.2, 1.0, 2.0, 2.4, 1.8][: len(rows[0])]
+        usable_width = Cm(16.5)
+        weights = [2.4, 1.0, 2.6, 2.6, 2.2][: len(rows[0])]
         total = sum(weights)
         col_widths = [Cm(usable_width.cm * w / total) for w in weights]
         for c, w in enumerate(col_widths):
             table.columns[c].width = w
             for row in table.rows:
                 row.cells[c].width = w
-        end_landscape_section(doc)
 
     return table_idx + 1
 
@@ -1082,11 +1053,11 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
 
         if line.startswith("## "):
             heading = line[3:].strip()
-            if heading not in {"Введение", "Заключение"}:
-                doc.add_page_break()
             p = doc.add_heading(heading.upper() if heading in {"Введение", "Заключение"} else heading, level=1)
             if heading in {"Введение", "Заключение"}:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            else:
+                p.paragraph_format.page_break_before = True
             reset_numbering()
             continue
 
