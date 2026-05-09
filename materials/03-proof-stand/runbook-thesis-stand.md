@@ -83,7 +83,8 @@ docker compose -f docker-compose.thesis.yml -f docker-compose.thesis.no-backplan
 - подписывает обоих клиентов на группу отчета;
 - меняет заголовок отчета через `app-api-1`;
 - проверяет, получил ли клиент на `app-api-2` событие `ReceiveReportPatch`;
-- выводит `serverInstanceId`, `connectionId`, идентификатор отчета и payload полученного события.
+- измеряет задержку доставки события;
+- выводит `serverInstanceId`, `connectionId`, идентификатор отчета, payload полученного события и метрики.
 
 Команда из корня проекта:
 
@@ -96,6 +97,15 @@ node scripts/realtime-scaleout-check.mjs
 
 - в режиме с Redis backplane скрипт должен завершиться успешно и вывести JSON с `ok: true`;
 - в режиме без backplane скрипт должен не дождаться события на втором узле, что демонстрирует исходное ограничение.
+
+Для серийной проверки можно задать число итераций:
+
+```bash
+cd /Users/gently/projects/bugreport-root/bugget
+THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs
+```
+
+В этом режиме скрипт выводит `successful`, `failed` и агрегированные задержки доставки: `min`, `max`, `avg`, `p50`, `p95`.
 
 ## Полезные логи
 

@@ -80,6 +80,7 @@
 - Сервисы стенда в compose названы `app-api-1`, `app-api-2`, `redis_app_thesis`, `postgres_app_thesis`, `nginx_app_thesis`.
 - Минимальный проверочный клиент находится в `/Users/gently/projects/bugreport-root/bugget/scripts/realtime-scaleout-check.mjs`.
 - Автоматизированный сценарий `node scripts/realtime-scaleout-check.mjs` или `npm run test:realtime-scaleout` подтвердил доставку события между `app-api-1` и `app-api-2` при включенном Redis backplane.
+- Проверочный клиент расширен серийным режимом `THESIS_ITERATIONS=N`; короткий прогон `THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs` дал 5 успешных доставок из 5, `avg = 5,5 мс`, `p50 = 4,4 мс`, `p95 = 9,5 мс`.
 - При отключенном backplane тот же сценарий завершался timeout, что фиксирует исходное ограничение multi-instance режима.
 
 ## Важные ограничения по оформлению
