@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 from docx import Document
-from docx.enum.section import WD_SECTION
+from docx.enum.section import WD_ORIENTATION, WD_SECTION
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK, WD_TAB_LEADER
 from docx.oxml import OxmlElement
@@ -36,6 +36,26 @@ FONT_REGULAR = Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf")
 FONT_BOLD = Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf")
 
 
+_INLINE_CODE_RE = re.compile(r"(`[^`]+`)")
+
+
+def add_inline_runs(paragraph, text: str, *, size: int = 14, bold: bool = False, italic: bool = False):
+    if not text:
+        return
+    for part in _INLINE_CODE_RE.split(text):
+        if not part:
+            continue
+        is_code = part.startswith("`") and part.endswith("`") and len(part) >= 2
+        run = paragraph.add_run(part[1:-1] if is_code else part)
+        set_run_font(
+            run,
+            size=size,
+            bold=bold,
+            italic=italic,
+            name="Courier New" if is_code else "Times New Roman",
+        )
+
+
 def set_cell_text(cell, text: str, *, size: int = 14, bold: bool = False, align=WD_ALIGN_PARAGRAPH.CENTER):
     cell.text = ""
     p = cell.paragraphs[0]
@@ -44,11 +64,7 @@ def set_cell_text(cell, text: str, *, size: int = 14, bold: bool = False, align=
     p.paragraph_format.line_spacing = 1.0
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(0)
-    run = p.add_run(text)
-    run.font.name = "Times New Roman"
-    run._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
-    run.font.size = Pt(size)
-    run.bold = bold
+    add_inline_runs(p, text, size=size, bold=bold)
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
@@ -341,6 +357,13 @@ def set_start_page_number(section, start: int):
         pg_num_type = OxmlElement("w:pgNumType")
         sect_pr.append(pg_num_type)
     pg_num_type.set(qn("w:start"), str(start))
+
+
+def clear_start_page_number(section):
+    sect_pr = section._sectPr
+    pg_num_type = sect_pr.find(qn("w:pgNumType"))
+    if pg_num_type is not None:
+        sect_pr.remove(pg_num_type)
 
 
 def add_centered(doc, text: str, *, size=14, bold=False, space_after=0):
@@ -657,7 +680,8 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (2, "2.1 Характеристика целевой системы", 10),
             (2, "2.2 Исходная реализация real-time взаимодействия", 10),
             (2, "2.3 Требования к разрабатываемому решению", 11),
-            (2, "2.4 Постановка задачи", 12),
+            (2, "2.4 Выбор платформы и инструментальных средств", 12),
+            (2, "2.5 Постановка задачи", 12),
             (1, "3. Проектирование масштабируемого real-time контура", 13),
             (2, "3.1 Исходная архитектура", 13),
             (2, "3.2 Целевая архитектура", 13),
@@ -700,7 +724,8 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
         (2, "2.1 Характеристика целевой системы", 11),
         (2, "2.2 Исходная реализация real-time взаимодействия", 11),
         (2, "2.3 Требования к разрабатываемому решению", 12),
-        (2, "2.4 Постановка задачи", 12),
+        (2, "2.4 Выбор платформы и инструментальных средств", 12),
+        (2, "2.5 Постановка задачи", 13),
         (1, "3. Проектирование масштабируемого real-time контура", 14),
         (2, "3.1 Исходная архитектура", 14),
         (2, "3.2 Целевая архитектура", 14),
@@ -779,22 +804,20 @@ def add_body_paragraph(doc: Document, text: str):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.first_line_indent = Cm(1.25)
     p.paragraph_format.line_spacing = 1.5
-    for part in re.split(r"(`[^`]+`)", text):
-        if not part:
-            continue
-        run = p.add_run(part[1:-1] if part.startswith("`") and part.endswith("`") else part)
-        set_run_font(run, name="Courier New" if part.startswith("`") and part.endswith("`") else "Times New Roman")
+    add_inline_runs(p, text)
     return p
 
 
-def add_list_item(doc: Document, text: str, numbered=True):
-    style = "List Number" if numbered else "List Bullet"
-    p = doc.add_paragraph(style=style)
+def add_list_item(doc: Document, text: str, *, numbered: bool = True, index: int = 1):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.left_indent = Cm(1.25)
-    p.paragraph_format.first_line_indent = Cm(-0.5)
+    p.paragraph_format.first_line_indent = Cm(-0.75)
     p.paragraph_format.line_spacing = 1.5
-    run = p.add_run(text)
-    set_run_font(run)
+    p.paragraph_format.space_after = Pt(0)
+    prefix = f"{index}. " if numbered else "— "
+    add_inline_runs(p, prefix + text)
+    return p
 
 
 def add_figure(doc: Document, image_path: Path, caption: str):
@@ -831,6 +854,40 @@ def add_code_block(doc: Document, code: str, language: str | None, figure_paths:
     return figure_idx
 
 
+def set_row_as_header(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    existing = tr_pr.find(qn("w:tblHeader"))
+    if existing is None:
+        existing = OxmlElement("w:tblHeader")
+        tr_pr.append(existing)
+    existing.set(qn("w:val"), "true")
+
+
+def begin_landscape_section(doc: Document):
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    section.orientation = WD_ORIENTATION.LANDSCAPE
+    section.page_width = Cm(29.7)
+    section.page_height = Cm(21.0)
+    section.top_margin = Cm(2)
+    section.bottom_margin = Cm(2)
+    section.left_margin = Cm(2)
+    section.right_margin = Cm(1.5)
+    clear_start_page_number(section)
+    add_page_number_footer(section)
+    return section
+
+
+def end_landscape_section(doc: Document):
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    section.orientation = WD_ORIENTATION.PORTRAIT
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
+    set_page_margins(section)
+    clear_start_page_number(section)
+    add_page_number_footer(section)
+    return section
+
+
 def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
     rows = []
     for line in lines:
@@ -849,22 +906,43 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
         "Режим": "Сравнительная таблица результатов испытаний",
     }
     caption_text = captions.get(rows[0][0], "Сравнительные данные")
+    is_results_table = rows[0][0] == "Режим"
+
+    if is_results_table:
+        begin_landscape_section(doc)
 
     cap = doc.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
     cap.paragraph_format.first_line_indent = Cm(0)
+    cap.paragraph_format.keep_with_next = True
+    cap.paragraph_format.space_after = Pt(2)
     run = cap.add_run(f"Таблица {table_idx} — {caption_text}")
     set_run_font(run, size=12, bold=True)
 
     table = doc.add_table(rows=1, cols=len(rows[0]))
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+    cell_size = 10 if is_results_table else 11
     for c, text in enumerate(rows[0]):
-        set_cell_text(table.cell(0, c), text, size=11, bold=True)
+        set_cell_text(table.cell(0, c), text, size=cell_size, bold=True)
+    set_row_as_header(table.rows[0])
     for row in rows[1:]:
         cells = table.add_row().cells
         for c, text in enumerate(row[: len(cells)]):
-            set_cell_text(cells[c], text, size=11, align=WD_ALIGN_PARAGRAPH.LEFT)
+            set_cell_text(cells[c], text, size=cell_size, align=WD_ALIGN_PARAGRAPH.LEFT)
+
+    if is_results_table:
+        usable_width = Cm(26.2)
+        weights = [1.6, 1.2, 1.0, 2.0, 2.4, 1.8][: len(rows[0])]
+        total = sum(weights)
+        col_widths = [Cm(usable_width.cm * w / total) for w in weights]
+        for c, w in enumerate(col_widths):
+            table.columns[c].width = w
+            for row in table.rows:
+                row.cells[c].width = w
+        end_landscape_section(doc)
+
     return table_idx + 1
 
 
@@ -892,6 +970,7 @@ def transform_for_practice(text: str) -> str:
         "## 5. Испытания и оценка результатов": "## 5. Результаты практики и оценка решения",
         "Цель работы: разработать и исследовать real-time интерфейс": "Цель преддипломной практики: разработать и исследовать real-time интерфейс",
         "Для достижения цели поставлены следующие задачи:": "В ходе практики решались следующие задачи:",
+        "Элемент новизны работы заключается в инженерно-исследовательском обосновании и экспериментальной проверке распределенного": "Результатом практики является инженерно-исследовательское обоснование и экспериментальная проверка распределенного",
         "Новизна работы заключается": "Результатом практики является",
         "Элемент новизны работы заключается": "Результатом практики является",
         "В рамках работы не разрабатывается новый сетевой протокол, но выполняется авторская композиция": "В рамках практики не разрабатывался новый сетевой протокол, но была выполнена авторская композиция",
@@ -932,12 +1011,19 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
     skip_until_main = True
     in_sources = False
     source_lines: list[str] = []
+    numbered_counter = 0
+    last_was_numbered = False
 
     def flush_table():
         nonlocal table_lines, table_idx
         if table_lines:
             table_idx = add_markdown_table(doc, table_lines, table_idx)
             table_lines = []
+
+    def reset_numbering():
+        nonlocal numbered_counter, last_was_numbered
+        numbered_counter = 0
+        last_was_numbered = False
 
     for raw in lines:
         line = raw.rstrip()
@@ -966,22 +1052,27 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
             in_code = True
             code_lang = line.strip("`").strip() or None
             code_lines = []
+            reset_numbering()
             continue
 
         if line.strip().startswith("|"):
             table_lines.append(line)
+            reset_numbering()
             continue
         flush_table()
 
         if not line.strip():
+            reset_numbering()
             continue
 
         if line.strip() == "<!-- PAGE_BREAK -->":
             doc.add_page_break()
+            reset_numbering()
             continue
 
         if line.strip() == "## Список использованных источников":
             in_sources = True
+            reset_numbering()
             continue
 
         if in_sources:
@@ -996,20 +1087,29 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
             p = doc.add_heading(heading.upper() if heading in {"Введение", "Заключение"} else heading, level=1)
             if heading in {"Введение", "Заключение"}:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            reset_numbering()
             continue
 
         if line.startswith("### "):
             doc.add_heading(line[4:].strip(), level=2)
+            reset_numbering()
             continue
 
         numbered_match = re.match(r"^(\d+)\.\s+(.*)", line.strip())
         bullet_match = re.match(r"^[-*]\s+(.*)", line.strip())
         if numbered_match:
-            add_list_item(doc, numbered_match.group(2), numbered=True)
+            if not last_was_numbered:
+                numbered_counter = 1
+            else:
+                numbered_counter += 1
+            add_list_item(doc, numbered_match.group(2), numbered=True, index=numbered_counter)
+            last_was_numbered = True
         elif bullet_match:
             add_list_item(doc, bullet_match.group(1), numbered=False)
+            last_was_numbered = False
         else:
             add_body_paragraph(doc, line)
+            last_was_numbered = False
 
     flush_table()
     if source_lines:

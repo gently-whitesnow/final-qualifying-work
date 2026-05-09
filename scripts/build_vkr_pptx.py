@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import sys
 import zipfile
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "build" / "pptx"
 OUT_PPTX = OUT_DIR / "vkr-defense-draft.pptx"
+PRACTICE_OUT_PPTX = OUT_DIR / "practice-defense-draft.pptx"
 
 SLIDE_W = 12_192_000
 SLIDE_H = 6_858_000
@@ -104,7 +106,7 @@ def title(sid: int, text: str, subtitle: str | None = None) -> str:
 
 
 def footer(n: int) -> str:
-    return shape(900, 0.65, 7.12, 12.0, 0.22, f"ВКР · real-time scale-out · {n:02d}", fill="", line="", size=8, text_color=MUTED)
+    return shape(900, 0.65, 7.12, 12.0, 0.22, f"Real-time scale-out · {n:02d}", fill="", line="", size=8, text_color=MUTED)
 
 
 def slide_xml(n: int, body: str) -> str:
@@ -132,58 +134,122 @@ def slide_rels() -> str:
 </Relationships>"""
 
 
-def deck_slides() -> list[str]:
+def title_slide(kind: str) -> str:
+    if kind == "practice":
+        heading = "Презентация по отчёту о прохождении преддипломной практики"
+        subtitle = "по теме: «Разработка real-time интерфейса с поддержкой горизонтального масштабирования WebSocket-соединений для системы отслеживания задач»"
+        return (
+            shape(10, 0.65, 1.0, 11.9, 1.4, heading,
+                  fill="", line="", size=24, bold=True, align="ctr")
+            + shape(11, 0.65, 2.7, 11.9, 1.6, subtitle,
+                    fill="", line="", size=17, text_color=MUTED, align="ctr")
+            + shape(12, 0.65, 4.7, 11.9, 0.4, "Студент: Зайцев А. С., группа 4131з",
+                    fill="", line="", size=15, align="ctr")
+            + shape(13, 0.65, 5.2, 11.9, 0.4, "Руководитель: ст. преподаватель С. А. Рогачев",
+                    fill="", line="", size=15, align="ctr")
+            + shape(14, 0.65, 6.0, 11.9, 0.4, "Санкт-Петербург, 2026",
+                    fill="", line="", size=14, text_color=MUTED, align="ctr")
+        )
+    return (
+        shape(10, 0.65, 1.45, 11.9, 1.7,
+              "Разработка real-time интерфейса с поддержкой горизонтального масштабирования WebSocket-соединений для системы отслеживания задач",
+              fill="", line="", size=26, bold=True, align="ctr")
+        + shape(11, 0.65, 3.55, 11.9, 0.4, "Защита выпускной квалификационной работы",
+                fill="", line="", size=16, text_color=MUTED, align="ctr")
+        + shape(12, 0.65, 4.7, 11.9, 0.4, "Студент: Зайцев А. С., группа 4131з",
+                fill="", line="", size=15, align="ctr")
+        + shape(13, 0.65, 5.2, 11.9, 0.4, "Руководитель: ст. преподаватель С. А. Рогачев",
+                fill="", line="", size=15, align="ctr")
+        + shape(14, 0.65, 6.0, 11.9, 0.4, "Санкт-Петербург, 2026",
+                fill="", line="", size=14, text_color=MUTED, align="ctr")
+    )
+
+
+def deck_slides(kind: str = "vkr") -> list[str]:
     return [
-        title(10, "Горизонтальное масштабирование WebSocket-соединений", "Система отслеживания задач · SignalR · Redis backplane · nginx")
-        + shape(20, 0.8, 2.15, 5.7, 2.2, "Тезис\nРазработан и проверен распределенный real-time контур, устраняющий single-node ограничение WebSocket-архитектуры.", fill=SOFT, line=ACCENT, size=22, bold=True)
-        + shape(21, 6.85, 2.15, 5.3, 2.2, "Ключевой результат\nСобытие, созданное на app-api-1, доставляется клиенту на app-api-2; после отказа app-api-2 клиент восстанавливается через nginx.", fill=PANEL, line=ACCENT_2, size=21),
-        title(10, "Проблема: real-time ломается не в коде события, а в границе узла")
-        + shape(20, 0.75, 1.55, 3.55, 3.2, "Single-node\nВсе соединения и группы живут в памяти одного процесса.", fill=PANEL, size=20, bold=True)
-        + shape(21, 4.65, 1.55, 3.55, 3.2, "Multi-instance без backplane\nКаждый app-api знает только своих клиентов.", fill=WARN, line=ACCENT_2, size=20, bold=True)
-        + shape(22, 8.55, 1.55, 3.55, 3.2, "Следствие\nКлиент на другом узле не получает ReceiveReportPatch.", fill=PANEL, size=20, bold=True),
-        title(10, "Целевая архитектура: общий real-time слой поверх нескольких app-api")
-        + shape(20, 0.7, 1.55, 2.25, 0.8, "Клиент A", fill=PANEL, size=18, bold=True, align="ctr")
-        + shape(21, 0.7, 3.15, 2.25, 0.8, "Клиент B", fill=PANEL, size=18, bold=True, align="ctr")
-        + shape(22, 3.45, 2.35, 1.8, 0.9, "nginx", fill=SOFT, line=ACCENT, size=18, bold=True, align="ctr")
-        + shape(23, 5.85, 1.55, 2.15, 0.8, "app-api-1", fill=PANEL, size=18, bold=True, align="ctr")
-        + shape(24, 5.85, 3.15, 2.15, 0.8, "app-api-2", fill=PANEL, size=18, bold=True, align="ctr")
-        + shape(25, 8.65, 2.35, 2.4, 0.9, "Redis backplane", fill=SOFT, line=ACCENT, size=17, bold=True, align="ctr")
-        + shape(26, 3.0, 5.05, 7.4, 0.65, "События SignalR публикуются между экземплярами, а группы остаются локальным runtime-состоянием.", fill="", line="", size=17, text_color=MUTED, align="ctr"),
-        title(10, "Что реализовано в отдельной ветке thesis/realtime-scaleout")
-        + shape(20, 0.75, 1.45, 5.6, 1.0, "1 · Redis backplane для SignalR\nКонфигурируется через REDIS_CONNECTION_STRING", fill=PANEL, size=18)
-        + shape(21, 0.75, 2.65, 5.6, 1.0, "2 · Диагностика узла\nSERVER_INSTANCE_ID, connectionId, machineName", fill=PANEL, size=18)
-        + shape(22, 6.75, 1.45, 5.6, 1.0, "3 · Multi-instance Docker Compose\napp-api-1, app-api-2, Redis, PostgreSQL, nginx", fill=PANEL, size=18)
-        + shape(23, 6.75, 2.65, 5.6, 1.0, "4 · Автоматизированный клиент\nDelivery, serial, rejoin и failover сценарии", fill=PANEL, size=18)
-        + shape(24, 1.2, 4.45, 10.8, 0.95, "Важная граница: проверяется серверный real-time контур, а не полнота пользовательского интерфейса.", fill=WARN, line=ACCENT_2, size=19, bold=True, align="ctr"),
-        title(10, "Стенд испытаний: минимальный, но проверяемый")
-        + shape(20, 0.8, 1.45, 3.5, 3.8, "Состав\npostgres_app_thesis\nredis_app_thesis\napp-api-1\napp-api-2\nnginx_app_thesis", fill=PANEL, size=19)
-        + shape(21, 4.75, 1.45, 3.5, 3.8, "Две конфигурации\nС Redis backplane\nБез Redis backplane\n\nОдин и тот же код, разная настройка REDIS_CONNECTION_STRING", fill=SOFT, line=ACCENT, size=18)
-        + shape(22, 8.7, 1.45, 3.5, 3.8, "Команды\nnode scripts/realtime-scaleout-check.mjs\nTHESIS_ITERATIONS=5\nTHESIS_SCENARIO=failover", fill=PANEL, size=17),
-        title(10, "Главная проверка: без backplane проблема воспроизводится")
-        + shape(20, 0.9, 1.55, 5.45, 2.7, "Без Redis backplane\nReceiveReportPatch timed out after 10000ms", fill=WARN, line=ACCENT_2, size=25, bold=True, align="ctr")
-        + shape(21, 6.85, 1.55, 5.45, 2.7, "С Redis backplane\nok: true\napp-api-1 → app-api-2", fill=SOFT, line=ACCENT, size=25, bold=True, align="ctr")
-        + shape(22, 1.2, 4.75, 10.6, 0.75, "Итог: проблема не декларативная — она воспроизводится на том же стенде и устраняется только при включенной межузловой доставке.", fill="", line="", size=19, text_color=MUTED, align="ctr"),
-        title(10, "Серийный прогон показывает повторяемость, а не разовый успех")
-        + shape(20, 0.85, 1.55, 2.35, 2.2, "5 / 5\nуспешно", fill=SOFT, line=ACCENT, size=30, bold=True, align="ctr")
-        + shape(21, 3.55, 1.55, 2.35, 2.2, "8,4 мс\navg", fill=PANEL, size=30, bold=True, align="ctr")
-        + shape(22, 6.25, 1.55, 2.35, 2.2, "9,1 мс\np50", fill=PANEL, size=30, bold=True, align="ctr")
-        + shape(23, 8.95, 1.55, 2.35, 2.2, "11,6 мс\np95", fill=PANEL, size=30, bold=True, align="ctr")
-        + shape(24, 1.2, 4.45, 10.5, 0.9, "Локальный короткий прогон не является нагрузочным тестом, но доказывает повторяемость ключевого свойства.", fill=WARN, line=ACCENT_2, size=19, align="ctr"),
-        title(10, "Устойчивость: подписка восстанавливается после разрыва и отказа узла")
-        + shape(20, 0.85, 1.55, 5.4, 2.5, "Rejoin после разрыва\nНовый connectionId\nПовторный JoinReportGroupAsync\nСобытие после rejoin: 6,6 мс", fill=PANEL, size=20, bold=True)
-        + shape(21, 6.55, 1.55, 5.4, 2.5, "Failover app-api-2\nКлиент через nginx перешел app-api-2 → app-api-1\nreconnect + rejoin: 240,3 мс\nследующее событие получено", fill=SOFT, line=ACCENT, size=19, bold=True)
-        + shape(22, 1.1, 4.75, 10.8, 0.65, "Для WebSocket-only проверки через nginx используется skipNegotiation, чтобы не зависеть от sticky sessions на этапе negotiate.", fill="", line="", size=17, text_color=MUTED, align="ctr"),
-        title(10, "Что это дает системе отслеживания задач")
-        + shape(20, 0.8, 1.45, 3.55, 3.25, "Масштабирование\nМожно запускать несколько backend-экземпляров без фрагментации real-time пространства.", fill=PANEL, size=19, bold=True)
-        + shape(21, 4.75, 1.45, 3.55, 3.25, "Наблюдаемость\nserverInstanceId и connectionId превращают демонстрацию в проверяемый эксперимент.", fill=PANEL, size=19, bold=True)
-        + shape(22, 8.7, 1.45, 3.55, 3.25, "Воспроизводимость\nCompose-стенд, override без backplane и Node.js-клиент фиксируют результат.", fill=PANEL, size=19, bold=True)
-        + shape(23, 1.1, 5.25, 11.0, 0.5, "Следующий промышленный шаг: длинная серия, больше клиентов, p99, поведение при недоступности Redis.", fill="", line="", size=17, text_color=MUTED, align="ctr"),
-        title(10, "Вывод для защиты")
-        + shape(20, 0.9, 1.35, 11.3, 1.35, "Разработан распределенный real-time контур для системы отслеживания задач, устраняющий single-node ограничение SignalR/WebSocket-архитектуры.", fill=SOFT, line=ACCENT, size=25, bold=True, align="ctr")
-        + shape(21, 0.9, 3.05, 3.45, 1.55, "Проблема\nБез backplane событие не доходит между узлами.", fill=PANEL, size=19, bold=True)
-        + shape(22, 4.85, 3.05, 3.45, 1.55, "Решение\nSignalR + Redis backplane + nginx + два app-api.", fill=PANEL, size=19, bold=True)
-        + shape(23, 8.8, 3.05, 3.45, 1.55, "Доказательство\nDelivery, series, rejoin, failover.", fill=PANEL, size=19, bold=True)
-        + shape(24, 1.2, 5.25, 10.5, 0.55, "Документ удержан в компактном формате до 35 страниц и подходит как база отчета по практике.", fill="", line="", size=18, text_color=MUTED, align="ctr"),
+        # 1. Title
+        title_slide(kind),
+
+        # 2. Problem and thesis
+        title(10, "Проблема: single-node SignalR теряет события между узлами")
+        + shape(20, 0.75, 1.7, 5.7, 2.6,
+                "Без межузлового канала\nКаждый экземпляр знает только своих клиентов.\nСобытие, созданное на одном узле, не доходит до клиента на другом.",
+                fill=PANEL, size=18)
+        + shape(21, 6.75, 1.7, 5.7, 2.6,
+                "Цель работы\nВосстановить корректную доставку событий между клиентами, подключенными к разным экземплярам backend-сервиса.",
+                fill=SOFT, line=ACCENT, size=18, bold=True),
+
+        # 3. Target architecture
+        title(10, "Целевая архитектура")
+        + shape(20, 0.7, 1.85, 2.0, 0.7, "Клиент A", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(21, 0.7, 3.55, 2.0, 0.7, "Клиент B", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(22, 3.4, 2.7, 1.7, 0.85, "nginx", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(23, 5.8, 1.85, 2.1, 0.7, "app-api-1", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(24, 5.8, 3.55, 2.1, 0.7, "app-api-2", fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(25, 8.55, 2.7, 2.5, 0.85, "Redis backplane", fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(26, 0.7, 5.2, 11.5, 0.55,
+                "SignalR-события публикуются между экземплярами через Redis; группы остаются локальным runtime-состоянием.",
+                fill="", line="", size=14, text_color=MUTED, align="ctr"),
+
+        # 4. What was built
+        title(10, "Что сделано")
+        + shape(20, 0.75, 1.7, 5.7, 1.2,
+                "1 · Redis backplane для SignalR\nКонфигурируется через REDIS_CONNECTION_STRING",
+                fill=PANEL, size=15)
+        + shape(21, 0.75, 3.0, 5.7, 1.2,
+                "2 · Диагностика узла\nSERVER_INSTANCE_ID, connectionId, machineName",
+                fill=PANEL, size=15)
+        + shape(22, 6.75, 1.7, 5.7, 1.2,
+                "3 · Стенд Docker Compose\napp-api-1, app-api-2, Redis, PostgreSQL, nginx",
+                fill=PANEL, size=15)
+        + shape(23, 6.75, 3.0, 5.7, 1.2,
+                "4 · Node.js-клиент\nDelivery, серия, rejoin, failover",
+                fill=PANEL, size=15),
+
+        # 5. Test stand and program
+        title(10, "Стенд и программа испытаний")
+        + shape(20, 0.75, 1.75, 5.7, 2.5,
+                "Два режима\n• С Redis backplane\n• Без Redis backplane\nОдин и тот же код, разница — переменная окружения.",
+                fill=SOFT, line=ACCENT, size=15)
+        + shape(21, 6.75, 1.75, 5.7, 2.5,
+                "Четыре сценария\n• Одиночная доставка\n• Серия из 5 итераций\n• Rejoin после разрыва\n• Failover узла",
+                fill=PANEL, size=15),
+
+        # 6. Main result
+        title(10, "Главный результат")
+        + shape(20, 0.75, 1.7, 5.7, 2.6,
+                "Без backplane\ntimeout 10000 мс\nсобытие не доставлено",
+                fill=WARN, line=ACCENT_2, size=20, bold=True, align="ctr")
+        + shape(21, 6.75, 1.7, 5.7, 2.6,
+                "С backplane\nok: true · 5 из 5\np95 = 11,6 мс",
+                fill=SOFT, line=ACCENT, size=20, bold=True, align="ctr")
+        + shape(22, 0.75, 4.7, 11.7, 0.55,
+                "Один код, один сценарий — разница только в наличии межузлового канала.",
+                fill="", line="", size=14, text_color=MUTED, align="ctr"),
+
+        # 7. Resilience
+        title(10, "Устойчивость: rejoin и failover")
+        + shape(20, 0.75, 1.75, 5.7, 2.5,
+                "Rejoin после разрыва\nНовый connectionId, повторный JoinReportGroupAsync.\nСобытие после rejoin — 6,6 мс.",
+                fill=PANEL, size=15)
+        + shape(21, 6.75, 1.75, 5.7, 2.5,
+                "Failover узла\nКлиент переподключился через nginx с app-api-2 на app-api-1.\nreconnect + rejoin — 240,3 мс.",
+                fill=SOFT, line=ACCENT, size=15),
+
+        # 8. Conclusion
+        title(10, "Вывод")
+        + shape(20, 0.75, 1.85, 11.7, 1.4,
+                "Ограничение single-node WebSocket-архитектуры устранено за счёт распределённого real-time контура.",
+                fill=SOFT, line=ACCENT, size=20, bold=True, align="ctr")
+        + shape(21, 0.75, 3.55, 3.7, 1.7,
+                "Проблема\nБез backplane событие теряется между узлами.",
+                fill=PANEL, size=14, bold=True)
+        + shape(22, 4.65, 3.55, 3.7, 1.7,
+                "Решение\nSignalR + Redis backplane + nginx + два app-api.",
+                fill=PANEL, size=14, bold=True)
+        + shape(23, 8.55, 3.55, 3.7, 1.7,
+                "Доказательство\nDelivery, серия, rejoin, failover.",
+                fill=PANEL, size=14, bold=True),
     ]
 
 
@@ -272,10 +338,11 @@ def static_parts() -> dict[str, str]:
     }
 
 
-def build() -> Path:
+def build(kind: str = "vkr") -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    slides = deck_slides()
-    with zipfile.ZipFile(OUT_PPTX, "w", compression=zipfile.ZIP_DEFLATED) as z:
+    slides = deck_slides(kind)
+    out_path = PRACTICE_OUT_PPTX if kind == "practice" else OUT_PPTX
+    with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", content_types(len(slides)))
         z.writestr("ppt/presentation.xml", presentation_xml(len(slides)))
         z.writestr("ppt/_rels/presentation.xml.rels", presentation_rels(len(slides)))
@@ -284,8 +351,15 @@ def build() -> Path:
         for i, body in enumerate(slides, start=1):
             z.writestr(f"ppt/slides/slide{i}.xml", slide_xml(i, body))
             z.writestr(f"ppt/slides/_rels/slide{i}.xml.rels", slide_rels())
-    return OUT_PPTX
+    return out_path
+
+
+def main(kind: str | None = None):
+    selected = kind or ("practice" if "--practice" in sys.argv else "vkr")
+    if selected not in {"vkr", "practice"}:
+        raise ValueError(f"Unknown deck kind: {selected}")
+    print(build(selected))
 
 
 if __name__ == "__main__":
-    print(build())
+    main()
