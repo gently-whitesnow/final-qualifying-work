@@ -38,6 +38,7 @@
 - Генератор отчета по практике: `scripts/build_practice_report_docx.py`
 - Генератор PPTX: `scripts/build_vkr_pptx.py`
 - Pipeline DOCX: `materials/04-docx/docx-pipeline.md`
+- План дальнейшего улучшения ВКР: `materials/02-planning/further-vkr-improvement-plan.md`
 - Handoff: `materials/99-handoff/agent-handoff.md`
 
 ## Сборка DOCX

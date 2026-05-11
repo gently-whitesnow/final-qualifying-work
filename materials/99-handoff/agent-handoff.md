@@ -98,12 +98,13 @@
 
 - Актуальный DOCX: `/Users/gently/projects/final-qualifying-work/build/docx/vkr-draft-1.docx`.
 - Отдельная версия отчета по преддипломной практике: `/Users/gently/projects/final-qualifying-work/build/docx/practice-report-draft-1.docx`.
+- План дальнейшего улучшения ВКР: `/Users/gently/projects/final-qualifying-work/materials/02-planning/further-vkr-improvement-plan.md`.
 - Генератор DOCX: `/Users/gently/projects/final-qualifying-work/scripts/build_vkr_docx.py`.
 - Генератор отчета по практике: `/Users/gently/projects/final-qualifying-work/scripts/build_practice_report_docx.py`.
 - Рендер для визуальной проверки: `/Users/gently/projects/final-qualifying-work/build/docx/rendered`.
 - В генератор добавлены три воспроизводимые иллюстрации: single-node архитектура, multi-instance архитектура с Redis backplane, поток события `ReceiveReportPatch`.
 - Титульный лист помещается на одну страницу, содержание статическое и синхронизировано с текущим render-проходом.
-- Актуальный DOCX после добавления приложений занимает 36 страниц. Версия отчета по практике занимает 31 страницу и остается в рекомендованном диапазоне 25-35 страниц.
+- Актуальный DOCX после удаления спорных добавок занимает 37 страниц. Версия отчета по практике после добавления подраздела с описанием литературы занимает 35 страниц и остается в рекомендованном диапазоне 25-35 страниц.
 - В актуальном DOCX нет старых маркеров `authorization-api`, `users-api`, `bugget-api-1`, `bugget-api-2`, `frontend`, `RealtimeDebugBadge`.
 - Список источников расширен до 20 наименований: интернет-источники составляют 10 из 20, что соответствует ограничению не более 50 процентов.
 
