@@ -1392,15 +1392,11 @@ def build_document(kind: str = "vkr"):
     doc.sections[0].footer.is_linked_to_previous = False
 
     if kind == "practice":
-        add_practice_title_page(doc)
-        toc_section = doc.add_section(WD_SECTION.NEW_PAGE)
-        set_page_margins(toc_section)
-        toc_section.footer.is_linked_to_previous = False
         add_toc(doc, kind=kind)
 
         body_section = doc.add_section(WD_SECTION.NEW_PAGE)
         set_page_margins(body_section)
-        set_start_page_number(body_section, 3)
+        set_start_page_number(body_section, 4)
         add_page_number_footer(body_section)
     else:
         add_title_page(doc)
