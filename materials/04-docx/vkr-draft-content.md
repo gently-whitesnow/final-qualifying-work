@@ -572,16 +572,28 @@ THESIS_ITERATIONS=30 node scripts/realtime-scaleout-check.mjs
 1. Фрагмент `docker-compose.thesis.yml`.
 2. Фрагмент `docker-compose.thesis.no-backplane.yml`.
 3. Фрагмент `upstreams.thesis.conf`.
-4. Фрагмент настройки SignalR с `AddStackExchangeRedis`.
-5. Фрагмент `GetConnectionDiagnosticsAsync`.
-6. Фрагмент `ReportPageHubClient.SendToGroupAsync`.
-7. Фрагмент клиентского подключения SignalR и повторного `JoinReportGroupAsync` после восстановления соединения.
-8. Фрагмент тестов `reconnectJoinHandler`.
-9. Фрагмент проверочного клиента `realtime-scaleout-check.mjs`.
-10. Вывод `npm run test:realtime-scaleout` для режима с Redis backplane.
-11. Вывод истечения времени ожидания для режима без Redis backplane.
-12. Вывод `THESIS_ITERATIONS=30` с агрегированными задержками.
-13. Вывод `THESIS_SCENARIO=rejoin` и `THESIS_SCENARIO=failover`.
+4. Метод `AddMessaging` целиком: `AddSignalR`, `AddJsonProtocol`, фильтр исключений хаба, условное `AddStackExchangeRedis`, регистрация `ReportPageHubClient` и `ServerInstanceInfo`.
+5. Контракт `RealtimeConnectionDiagnostics` (record).
+6. Метод хаба `GetConnectionDiagnosticsAsync`.
+7. Жизненный цикл хаба: `OnConnectedAsync` и `OnDisconnectedAsync` с логированием по `serverInstanceId`.
+8. Доменный метод хаба `JoinReportGroupAsync`: авторизация, `ResolveReportIdAsync`, формирование ключа группы через `ReportIdContext`, `AddToGroupAsync`.
+9. Централизованный метод `ReportPageHubClient.SendToGroupAsync` с `eventId`, логированием и `GroupExcept`.
+10. Выжимка типизированных доменных отправителей `Send*Async` (отчет, баг, комментарий, вложение, порядок шагов) из 17 методов класса.
+11. Фрагмент клиентского `buildConnection` (SignalR HubConnection, transport, reconnect delays).
+12. Контракт фронта: `SocketEvent`, `SocketPayload`, `customParsers` для позиционных аргументов.
+13. Effector-эффекты `joinReportFx` и `leaveReportFx`.
+14. `initSocketFx`: единая регистрация обработчиков по `SocketEvent`, кастомные парсеры, `onreconnected`, `onclose` с очисткой через `conn.off`, защита `initPromise`.
+15. `refreshConnectionDiagnostics` с обработкой ошибок и сбросом диагностики.
+16. `useReportPageSocket` и `createReconnectJoinHandler` для повторной подписки после reconnect.
+17. Три модульных теста `reconnectJoinHandler`: нет текущего отчета, повторная подписка, актуальный `reportId` между переподключениями.
+18. Выжимка `useReportSocketEvents`: разложение real-time потока на доменные сторы страницы отчета (24 подписки).
+19. Проверочный клиент: `withTimeout`, `sendReportPatch` с заголовком `X-Signal-R-Connection-Id`, `connectToServerInstance` для привязки к узлу через nginx.
+20. Базовый сценарий доставки `delivery` с замерами `performance.now()`.
+21. Сценарий `failover`: `docker stop` целевого контейнера, ожидание `onreconnected`, повторный `JoinReportGroupAsync`, проверка смены `serverInstanceId`.
+22. Вывод `npm run test:realtime-scaleout` для режима с Redis backplane.
+23. Вывод истечения времени ожидания для режима без Redis backplane.
+24. Вывод `THESIS_ITERATIONS=30` с агрегированными задержками.
+25. Вывод `THESIS_SCENARIO=rejoin` и `THESIS_SCENARIO=failover`.
 
 ## Что нужно сделать на следующем проходе
 

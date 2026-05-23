@@ -753,7 +753,7 @@ def add_abstract(doc: Document):
     p = doc.add_heading("РЕФЕРАТ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     facts = (
-        "Выпускная квалификационная работа содержит 44 страницы, 6 рисунков, "
+        "Выпускная квалификационная работа содержит 52 страницы, 6 рисунков, "
         "2 таблицы, список использованных источников из 20 наименований и 3 приложения."
     )
     add_body_paragraph(doc, facts)
@@ -881,7 +881,7 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 37),
             (1, "ПРИЛОЖЕНИЕ А", 38),
             (1, "ПРИЛОЖЕНИЕ Б", 39),
-            (1, "ПРИЛОЖЕНИЕ В", 40),
+            (1, "ПРИЛОЖЕНИЕ В", 43),
         ]
     for level, title, page in entries:
         add_toc_line(doc, title, page, level=level)
@@ -1402,25 +1402,64 @@ redis:
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.page_break_before = True
     add_centered(doc, "Фрагменты реализации серверной части", bold=True)
-    add_body_paragraph(doc, "Подключение Redis backplane выполняется только при наличии переменной окружения `REDIS_CONNECTION_STRING`.")
+    add_body_paragraph(doc, "Настройка SignalR-конвейера выполнена в методе `AddMessaging` расширения `ServiceCollectionExtensions`. Сначала создается базовая регистрация хаба и JSON-протокола, затем условно подключается Redis backplane: при наличии переменной окружения `REDIS_CONNECTION_STRING` тот же исполняемый код переключается в режим межузловой доставки, при пустом значении — продолжает работать в одноузловом режиме. Это позволяет запускать один и тот же образ в позитивном и негативном контрольных режимах эксперимента.")
     add_code_block(
         doc,
-        """var redisConnectionString =
-    Environment.GetEnvironmentVariable(EnvironmentConstants.RedisConnectionString);
-
-if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        """public static IServiceCollection AddMessaging(this IServiceCollection services)
 {
-    signalRBuilder.AddStackExchangeRedis(redisConnectionString, options =>
+    services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
+
+    var signalRBuilder = services.AddSignalR(options =>
     {
-        options.Configuration.ChannelPrefix =
-            RedisChannel.Literal("app-api-realtime");
+        options.EnableDetailedErrors = true;
+        options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    })
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.DefaultIgnoreCondition =
+            JsonIgnoreCondition.WhenWritingNull;
+    })
+    .AddHubOptions<ReportPageHub>(options =>
+    {
+        options.AddFilter<HubExceptionHandlerFilter>();
     });
-}""",
+
+    var redisConnectionString =
+        Environment.GetEnvironmentVariable(EnvironmentConstants.RedisConnectionString);
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        signalRBuilder.AddStackExchangeRedis(redisConnectionString, options =>
+        {
+            options.Configuration.ChannelPrefix =
+                RedisChannel.Literal("app-api-realtime");
+        });
+    }
+
+    return services;
+}
+
+// Регистрация централизованного отправителя событий в группу
+services.AddSingleton<IReportPageHubClient, ReportPageHubClient>();
+// Информация об экземпляре сервера, инжектируется в хаб и в отправитель событий
+services.AddSingleton<ServerInstanceInfo>();""",
         "csharp",
         [],
         0,
     )
-    add_body_paragraph(doc, "Диагностический метод хаба возвращает идентификатор серверного экземпляра и соединения, что позволяет доказать подключение клиентов к разным узлам.")
+    add_body_paragraph(doc, "Контракт диагностических данных оформлен как `record` и используется в качестве возвращаемого типа метода хаба `GetConnectionDiagnosticsAsync`. В контракт включены идентификатор экземпляра сервера, имя машины, идентификатор SignalR-соединения и пользовательский идентификатор.")
+    add_code_block(
+        doc,
+        """public sealed record RealtimeConnectionDiagnostics(
+    string ServerInstanceId,
+    string MachineName,
+    string ConnectionId,
+    string? UserIdentifier);""",
+        "csharp",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Диагностический метод хаба возвращает идентификатор серверного экземпляра и соединения, что позволяет доказать подключение клиентов к разным узлам и сопоставить серверные логи с действиями конкретного клиента.")
     add_code_block(
         doc,
         """public Task<RealtimeConnectionDiagnostics> GetConnectionDiagnosticsAsync()
@@ -1436,7 +1475,77 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
         [],
         0,
     )
-    add_body_paragraph(doc, "Централизованная отправка события в группу сохраняет существующее содержимое событий и добавляет диагностическое логирование.")
+    add_body_paragraph(doc, "Жизненный цикл соединения сопровождается журналированием с указанием идентификатора экземпляра сервера. Это позволяет в негативном и позитивном сценариях соотнести события подключения и отключения клиента с конкретным узлом.")
+    add_code_block(
+        doc,
+        """public override async Task OnConnectedAsync()
+{
+    logger.LogWarning(
+        "Клиент {@ConnectionId} подключился к SignalR на экземпляре {@ServerInstanceId}",
+        Context.ConnectionId,
+        serverInstanceInfo.Id);
+
+    await base.OnConnectedAsync();
+}
+
+public override async Task OnDisconnectedAsync(Exception? exception)
+{
+    logger.LogWarning(
+        "Клиент {@ConnectionId} отключился от экземпляра {@ServerInstanceId}. Причина: {@Reason}",
+        Context.ConnectionId,
+        serverInstanceInfo.Id,
+        exception?.Message ?? "неизвестно");
+
+    await base.OnDisconnectedAsync(exception);
+}""",
+        "csharp",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Подписка клиента на real-time события отчета реализована как доменная операция, а не как прямой вызов `Groups.AddToGroupAsync`. Метод проверяет авторизацию пользователя, разрешает идентификатор отчета по нескольким источникам (внутренний, публичный и командный) и формирует ключ группы через структуру `ReportIdContext`. Только после доменной проверки выполняется присоединение соединения к группе SignalR.")
+    add_code_block(
+        doc,
+        """public async Task JoinReportGroupAsync(string aliasId)
+{
+    var user = Context.User?.GetIdentity();
+    if (user is null)
+    {
+        throw new HubException("пользователь не авторизован");
+    }
+
+    var (reportId, publicId, teamReportId) =
+        ReportIdResolveHelper.ResolveReportId(aliasId, aliasOptions.Value);
+    var resolvedReport = await reportsService.ResolveReportIdAsync(
+        user.OrganizationId,
+        user.TeamId,
+        reportId,
+        publicId,
+        teamReportId);
+
+    if (resolvedReport == null)
+    {
+        throw new HubException("репорт не найден");
+    }
+
+    var groupKey = new ReportIdContext(
+        resolvedReport.Id,
+        aliasId,
+        resolvedReport.CreatorTeamId
+    ).GroupKey;
+
+    logger.LogWarning(
+        "Клиент {@ConnectionId} подключился к группе {@ReportId} на экземпляре {@ServerInstanceId}",
+        Context.ConnectionId,
+        groupKey,
+        serverInstanceInfo.Id);
+
+    await Groups.AddToGroupAsync(Context.ConnectionId, groupKey);
+}""",
+        "csharp",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Централизованная отправка события в группу сохраняет существующее содержимое событий и добавляет диагностическое логирование. Поддерживается режим исключения соединения-инициатора через `GroupExcept`, что позволяет не дублировать клиенту-инициатору событие, на которое он уже среагировал по HTTP-ответу.")
     add_code_block(
         doc,
         """private Task SendToGroupAsync(
@@ -1445,6 +1554,16 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
     object?[] args,
     string? excludedConnectionId = null)
 {
+    var eventId = Guid.NewGuid().ToString("N");
+
+    logger.LogInformation(
+        "Realtime event {@EventId} {@EventName} отправлен из {@ServerInstanceId} в группу {@GroupKey}, excludedConnectionId={@ExcludedConnectionId}",
+        eventId,
+        eventName,
+        serverInstanceInfo.Id,
+        groupKey,
+        excludedConnectionId);
+
     var clients = excludedConnectionId is null
         ? hubContext.Clients.Group(groupKey)
         : hubContext.Clients.GroupExcept(groupKey, excludedConnectionId);
@@ -1455,12 +1574,49 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
         [],
         0,
     )
+    add_body_paragraph(doc, "На основе единого метода `SendToGroupAsync` построен набор типизированных доменных отправителей. Real-time контур покрывает не одно событие, а полный набор сущностей страницы отчета: сам отчет, баги, шаги воспроизведения, комментарии, вложения и ссылки. Ниже приведена выжимка из 17 методов класса `ReportPageHubClient`, показывающая разнообразие транслируемых событий и переключение имени события по типу вложения.")
+    add_code_block(
+        doc,
+        """public Task SendReportPatchAsync(
+    string groupKey, PatchReportSocketView view, string? signalRConnectionId)
+    => SendToGroupAsync(groupKey, "ReceiveReportPatch", [view], signalRConnectionId);
+
+public Task SendBugCreateAsync(
+    string groupKey, BugSummaryDbModel summary, string? signalRConnectionId)
+    => SendToGroupAsync(groupKey, "ReceiveBugCreate", [summary], signalRConnectionId);
+
+public Task SendCommentCreateAsync(
+    string groupKey, CommentSummaryDbModel comment, string? signalRConnectionId)
+    => SendToGroupAsync(groupKey, "ReceiveCommentCreate", [comment], signalRConnectionId);
+
+public Task SendAttachmentCreateAsync(
+    string groupKey, AttachmentSocketView view, string? signalRConnectionId)
+{
+    string eventName = view.AttachType switch
+    {
+        (int)AttachType.Comment => "ReceiveCommentAttachmentCreate",
+        (int)AttachType.BugStep => "ReceiveBugStepAttachmentCreate",
+        _ => "ReceiveBugAttachmentCreate"
+    };
+
+    return SendToGroupAsync(groupKey, eventName, [view], signalRConnectionId);
+}
+
+public Task SendBugStepsOrderUpdateAsync(
+    string groupKey, int bugId, BugStepSummaryDbModel[] steps,
+    string? signalRConnectionId)
+    => SendToGroupAsync(
+        groupKey, "ReceiveBugStepsOrderUpdate", [bugId, steps], signalRConnectionId);""",
+        "csharp",
+        [],
+        0,
+    )
 
     p = doc.add_heading("ПРИЛОЖЕНИЕ В", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.page_break_before = True
     add_centered(doc, "Фрагменты клиентского real-time слоя, проверочный клиент и результаты испытаний", bold=True)
-    add_body_paragraph(doc, "Клиентская часть решения относится к real-time слою страницы отчета: построению SignalR WebSocket-соединения, чтению диагностических данных, повторному вступлению в группу после восстановления соединения и тестам этого поведения.")
+    add_body_paragraph(doc, "Клиентская часть решения относится к real-time слою страницы отчета: построению SignalR WebSocket-соединения, типизированному контракту событий, регистрации единого набора обработчиков, обновлению диагностических данных, повторному вступлению в группу после восстановления соединения, доменной обработке событий и тестам этого поведения.")
     add_code_block(
         doc,
         """const reconnectDelays = [0, 2_000, 5_000, 10_000, 30_000, 60_000, 120_000];
@@ -1481,27 +1637,151 @@ export const buildConnection = (): HubConnection => {
         [],
         0,
     )
-    add_body_paragraph(doc, "После восстановления соединения клиент обновляет диагностические данные и сохраняет актуальный `connectionId`; это позволяет исключать собственное соединение при отправке события и проверять, к какому узлу подключен клиент.")
+    add_body_paragraph(doc, "Контракт real-time событий типизирован: серверные имена событий перечислены в enum `SocketEvent`, а для каждого события задан тип полезной нагрузки в `SocketPayload`. Для событий, аргументы которых на стороне сервера передаются позиционно, заданы кастомные парсеры, преобразующие их в объект с именованными полями.")
     add_code_block(
         doc,
-        """const refreshConnectionDiagnostics = async (conn: HubConnection) => {
-  const diagnostics = await conn.invoke<ConnectionDiagnostics>(
-    "GetConnectionDiagnosticsAsync"
-  );
-  setSignalRConnectionId(diagnostics.connectionId);
-  connectionDiagnosticsUpdated(diagnostics);
+        """export enum SocketEvent {
+  ReportPatch = "ReceiveReportPatch",
+  ReportParticipant = "ReceiveReportParticipant",
+  ReportLinkCreate = "ReceiveReportLinkCreate",
+  ReportLinkUpdate = "ReceiveReportLinkUpdate",
+  ReportLinkDelete = "ReceiveReportLinkDelete",
+  BugCreate = "ReceiveBugCreate",
+  BugPatch = "ReceiveBugPatch",
+  CommentCreate = "ReceiveCommentCreate",
+  CommentUpdate = "ReceiveCommentUpdate",
+  CommentDelete = "ReceiveCommentDelete",
+  BugStepCreate = "ReceiveBugStepCreate",
+  BugStepPatch = "ReceiveBugStepPatch",
+  BugStepsOrderUpdate = "ReceiveBugStepsOrderUpdate",
+  BugStepDelete = "ReceiveBugStepDelete",
+  BugAttachmentCreate = "ReceiveBugAttachmentCreate",
+  // ... всего 24 события для страницы отчета
+}
+
+export type SocketPayload = {
+  [SocketEvent.ReportPatch]: PatchReportSocketResponse;
+  [SocketEvent.BugPatch]: { bugId: number; patch: PatchBugSocketResponse };
+  [SocketEvent.CommentDelete]: { bugId: number; commentId: number };
+  // ... соответствующие типы для остальных событий
 };
 
-conn.onreconnected((connectionId) => {
-  connectionReconnected();
-  setSignalRConnectionId(connectionId ?? null);
-  void refreshConnectionDiagnostics(conn);
+export const customParsers: Partial<
+  Record<SocketEvent, (...args: unknown[]) => SocketPayload[SocketEvent]>
+> = {
+  [SocketEvent.BugPatch]: (...args) => {
+    const [bugId, patch] = args as [number, PatchBugSocketResponse];
+    return { bugId, patch };
+  },
+  [SocketEvent.CommentDelete]: (...args) => {
+    const [bugId, commentId] = args as [number, number];
+    return { bugId, commentId };
+  },
+};""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Команды на серверный хаб оформлены как effector-эффекты. Это делает работу с SignalR частью реактивной модели приложения и позволяет наблюдать за состоянием подписки тем же способом, что и за остальными доменными операциями.")
+    add_code_block(
+        doc,
+        """export const joinReportFx = socket.createEffect(
+  async ({ conn, reportId }: { conn: HubConnection; reportId: string }) => {
+    await conn.invoke("JoinReportGroupAsync", reportId);
+  }
+);
+
+export const leaveReportFx = socket.createEffect(
+  async ({ conn, reportId }: { conn: HubConnection; reportId: string }) => {
+    await conn.invoke("LeaveReportGroupAsync", reportId);
+  }
+);""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Инициализация соединения построена как единая последовательность: создается `HubConnection`, по перечислению `SocketEvent` регистрируется единый набор обработчиков с поддержкой кастомных парсеров, подписки на системные события `onreconnected` и `onclose` обеспечивают восстановление и корректную очистку. Защита через `initPromise` исключает повторную параллельную инициализацию.")
+    add_code_block(
+        doc,
+        """export const initSocketFx = socket.createEffect(async () => {
+  const currentConn = $connection.getState();
+  if (currentConn && currentConn.state !== HubConnectionState.Disconnected) {
+    return;
+  }
+
+  if (initPromise) {
+    await initPromise;
+    return;
+  }
+
+  initPromise = (async () => {
+    const conn = buildConnection();
+    const handlers = new Map<SocketEvent, (p: unknown) => void>();
+
+    Object.values(SocketEvent).forEach((event) => {
+      const customParser = customParsers[event];
+      const handler = (...args: unknown[]) => {
+        const payload = customParser
+          ? customParser(...args)
+          : (args[0] as SocketPayload[SocketEvent]);
+        socketEventReceived({ type: event, payload });
+      };
+      conn.on(event, handler);
+      handlers.set(event, handler);
+    });
+
+    conn.onreconnected((connectionId) => {
+      connectionReconnected();
+      setSignalRConnectionId(connectionId ?? null);
+      void refreshConnectionDiagnostics(conn);
+    });
+
+    conn.onclose((e) => {
+      handlers.forEach((h, ev) => conn.off(ev, h));
+      if ($connection.getState() === (conn as ConnectionReady)) {
+        connectionClosed(e);
+        setSignalRConnectionId(null);
+      }
+    });
+
+    try {
+      await startConnection(conn);
+      connectionStarted(
+        Object.assign(conn, { started: true }) as ConnectionReady
+      );
+      await refreshConnectionDiagnostics(conn);
+    } catch (e) {
+      handlers.forEach((h, ev) => conn.off(ev, h));
+      connectionClosed(e as Error);
+    }
+  })();
+
+  try { await initPromise; } finally { initPromise = null; }
 });""",
         "typescript",
         [],
         0,
     )
-    add_body_paragraph(doc, "Страница отчета хранит текущий `reportId` и после reconnect повторно вызывает `JoinReportGroupAsync`, чтобы восстановить membership в SignalR-группе.")
+    add_body_paragraph(doc, "После восстановления соединения клиент обновляет диагностические данные и сохраняет актуальный `connectionId`; это позволяет исключать собственное соединение при отправке события и проверять, к какому узлу подключен клиент после reconnect.")
+    add_code_block(
+        doc,
+        """const refreshConnectionDiagnostics = async (conn: HubConnection) => {
+  try {
+    const diagnostics = await conn.invoke<ConnectionDiagnostics>(
+      "GetConnectionDiagnosticsAsync"
+    );
+    setSignalRConnectionId(diagnostics.connectionId);
+    connectionDiagnosticsUpdated(diagnostics);
+  } catch (e) {
+    console.error("[Socket] Failed to read connection diagnostics", e);
+    connectionDiagnosticsUpdated(null);
+  }
+};""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Страница отчета хранит текущий `reportId` и после reconnect повторно вызывает `JoinReportGroupAsync`, чтобы восстановить membership в SignalR-группе. Логика повторной подписки выделена в отдельный модуль `createReconnectJoinHandler`, что упрощает тестирование.")
     add_code_block(
         doc,
         """const currentReportId = useRef<string | null>(null);
@@ -1527,10 +1807,34 @@ export const createReconnectJoinHandler = ({ join, getCurrentReportId }) => {
         [],
         0,
     )
-    add_body_paragraph(doc, "Поведение повторного вступления в группу покрыто модульными тестами: проверяются отсутствие лишнего вызова без текущего отчета, повторная подписка после reconnect и использование актуального `reportId`.")
+    add_body_paragraph(doc, "Поведение повторного вступления в группу покрыто модульными тестами: проверяются отсутствие лишнего вызова без текущего отчета, повторная подписка после reconnect и использование актуального `reportId` при последовательных переподключениях.")
     add_code_block(
         doc,
-        """it("uses latest report id on each reconnect", () => {
+        """it("does not call join when there is no current report id", () => {
+  const calls: string[] = [];
+  const handler = createReconnectJoinHandler({
+    join: (reportId) => calls.push(reportId),
+    getCurrentReportId: () => null,
+  });
+
+  handler();
+
+  expect(calls).toEqual([]);
+});
+
+it("calls join with current report id after reconnect", () => {
+  const calls: string[] = [];
+  const handler = createReconnectJoinHandler({
+    join: (reportId) => calls.push(reportId),
+    getCurrentReportId: () => "42",
+  });
+
+  handler();
+
+  expect(calls).toEqual(["42"]);
+});
+
+it("uses latest report id on each reconnect", () => {
   const calls: string[] = [];
   let currentReportId = "101";
   const handler = createReconnectJoinHandler({
@@ -1548,9 +1852,104 @@ export const createReconnectJoinHandler = ({ join, getCurrentReportId }) => {
         [],
         0,
     )
+    add_body_paragraph(doc, "Полученные real-time события распределяются по доменным сторам страницы отчета: изменение отчета, создание и изменение бага, операции над комментариями, шагами воспроизведения и вложениями. Ниже приведена выжимка из 24 подписок хука `useReportSocketEvents`, демонстрирующая разложение real-time потока на доменные операции интерфейса.")
+    add_code_block(
+        doc,
+        """export const useReportSocketEvents = () => {
+  const reportId = useUnit($reportIdStore);
+  const socketEvents = useUnit({
+    patchReportSocketEvent,
+    createBugSocketEvent,
+    patchBugSocketEvent,
+    createCommentSocketEvent,
+    updateCommentSocketEvent,
+    deleteCommentSocketEvent,
+    bugAttachmentCreatedSocketEvent,
+    // ...
+  });
+
+  useSocketEvent(SocketEvent.ReportPatch, (patch) =>
+    socketEvents.patchReportSocketEvent(patch)
+  );
+
+  useSocketEvent(SocketEvent.BugCreate, (bug) => {
+    if (!reportId) return;
+    socketEvents.createBugSocketEvent({ reportId, bug });
+  });
+
+  useSocketEvent(SocketEvent.BugPatch, ({ bugId, patch }) =>
+    socketEvents.patchBugSocketEvent({ bugId, patch })
+  );
+
+  useSocketEvent(SocketEvent.CommentCreate, (comment) =>
+    socketEvents.createCommentSocketEvent(comment)
+  );
+
+  useSocketEvent(SocketEvent.CommentUpdate, (comment) =>
+    socketEvents.updateCommentSocketEvent(comment)
+  );
+
+  useSocketEvent(SocketEvent.CommentDelete, ({ bugId, commentId }) =>
+    socketEvents.deleteCommentSocketEvent({ bugId, commentId })
+  );
+
+  useSocketEvent(SocketEvent.BugAttachmentCreate, (attachment) => {
+    if (attachment.attachType === AttachmentTypes.COMMENT) return;
+    socketEvents.bugAttachmentCreatedSocketEvent(attachment);
+  });
+  // ... остальные подписки по аналогии
+};""",
+        "typescript",
+        [],
+        0,
+    )
     doc.add_page_break()
     add_centered(doc, "Проверочный клиент", bold=True)
-    add_body_paragraph(doc, "Проверочный клиент подключает два SignalR-соединения к разным узлам, подписывает их на группу отчета и ожидает событие `ReceiveReportPatch` на втором узле.")
+    add_body_paragraph(doc, "Чтобы изоляция от пользовательского интерфейса не мешала строгости проверки, проверочный клиент имеет собственные обвязки: единый таймаут ожидания событий, доменный HTTP-запрос на изменение отчета с пробросом `X-Signal-R-Connection-Id` (для исключения инициатора в `GroupExcept`), а также привязка соединения к конкретному серверному экземпляру по идентификатору `serverInstanceId`. Последнее особенно важно через nginx, который сам распределяет соединение между узлами.")
+    add_code_block(
+        doc,
+        """const withTimeout = (promise, label) => {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
+const sendReportPatch = async (reportId, title, signalRConnectionId) =>
+  requestJson(`${nodeA}/v2/reports/${reportId}`, {
+    method: "PATCH",
+    headers: { "X-Signal-R-Connection-Id": signalRConnectionId },
+    body: JSON.stringify({ title }),
+  });
+
+const connectToServerInstance = async (baseUrl, serverInstanceId) => {
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const connection = buildConnection(baseUrl, { automaticReconnect: true });
+    await connection.start();
+    const diagnostics = await getDiagnostics(connection);
+
+    if (diagnostics.serverInstanceId === serverInstanceId) {
+      return { connection, diagnostics, attempt };
+    }
+
+    await connection.stop();
+    await wait(150);
+  }
+
+  throw new Error(
+    `Could not connect to ${serverInstanceId} through ${baseUrl}`,
+  );
+};""",
+        "javascript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Базовый сценарий проверки доставки события подключает два SignalR-соединения к разным узлам, подписывает их на группу отчета и ожидает событие `ReceiveReportPatch` на втором узле. Замеры задержки выполняются по `performance.now()` между моментом отправки HTTP-запроса и моментом прихода события на втором клиенте.")
     add_code_block(
         doc,
         """const diagnosticsA = await getDiagnostics(clientA);
@@ -1559,8 +1958,60 @@ const diagnosticsB = await getDiagnostics(clientB);
 await clientA.invoke("JoinReportGroupAsync", reportId);
 await clientB.invoke("JoinReportGroupAsync", reportId);
 
+const patchStartedAt = performance.now();
 await sendReportPatch(reportId, patchedTitle, diagnosticsA.connectionId);
-await withTimeout(patchWatcher.promise, "ReceiveReportPatch");""",
+await withTimeout(patchWatcher.promise, "ReceiveReportPatch");
+
+return {
+  ok: patchWatcher.getReceivedPatch()?.title === patchedTitle,
+  nodeA: diagnosticsA,
+  nodeB: diagnosticsB,
+  metrics: {
+    deliveryLatencyMs: roundMetric(patchWatcher.getReceivedAt() - patchStartedAt),
+  },
+};""",
+        "javascript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Сценарий проверки отказоустойчивости останавливает контейнер целевого узла и ожидает автоматический переход клиента на оставшийся узел через nginx. Подписывается обработчик `onreconnected`, который после восстановления соединения читает диагностику нового узла и повторно вызывает `JoinReportGroupAsync`. Сценарий считается пройденным, если событие изменения отчета доставлено клиенту на новом узле, а `serverInstanceId` после восстановления отличается от исходного.")
+    add_code_block(
+        doc,
+        """const initial = await connectToServerInstance(nginxNode, failoverTargetInstance);
+clientB = initial.connection;
+const diagnosticsB = initial.diagnostics;
+
+await clientB.invoke("JoinReportGroupAsync", reportId);
+
+const reconnectStartedAt = performance.now();
+const rejoinPromise = new Promise((resolve, reject) => {
+  clientB.onreconnected(async () => {
+    try {
+      diagnosticsAfterFailover = await getDiagnostics(clientB);
+      await clientB.invoke("JoinReportGroupAsync", reportId);
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+});
+
+await runDocker("stop", "--time", "1", failoverContainer);
+await withTimeout(rejoinPromise, "SignalR failover reconnect/rejoin");
+const rejoinedAt = performance.now();
+
+const secondPatchWatcher = waitForReportPatch(clientB, secondTitle);
+await sendReportPatch(reportId, secondTitle, diagnosticsA.connectionId);
+await withTimeout(secondPatchWatcher.promise, "Post-failover ReceiveReportPatch");
+
+return {
+  ok:
+    secondPatchWatcher.getReceivedPatch()?.title === secondTitle &&
+    diagnosticsAfterFailover?.serverInstanceId !== diagnosticsB.serverInstanceId,
+  metrics: {
+    failoverReconnectAndRejoinMs: roundMetric(rejoinedAt - reconnectStartedAt),
+  },
+};""",
         "javascript",
         [],
         0,
