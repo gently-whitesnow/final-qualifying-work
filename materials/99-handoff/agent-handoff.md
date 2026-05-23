@@ -3,8 +3,8 @@
 ## Основные пути
 
 - Рабочий репозиторий ВКР и практики: `/Users/gently/projects/final-qualifying-work`
-- Целевой проект для анализа и доработки: `/Users/gently/projects/bugreport-root/bugget/backend/bugget-api`
-- Связанный корневой репозиторий продукта: `/Users/gently/projects/bugreport-root/bugget`
+- Целевой проект для анализа и доработки: `/Users/gently/projects/bugget-fqw/backend/bugget-api`
+- Связанный корневой репозиторий продукта: `/Users/gently/projects/bugget-fqw`
 
 ## Ключевые материалы
 
@@ -28,13 +28,14 @@
 ## Что уже подтверждено
 
 - Практика проходит в институте.
-- Руководитель: Сергей Александрович Рогачев, старший преподаватель.
+- Научный руководитель ВКР: Фомин Александр Владимирович, канд. техн. наук, доцент.
+- Руководитель практики: Сергей Александрович Рогачев, старший преподаватель.
 - За практику планируется закрыть максимум работы по ВКР, а не только формальный отчет.
 - Основной целевой документ: сразу полная ВКР; отчет по практике потом извлекается из нее.
 - Реальная доработка проекта является доказательной базой работы.
 - Разработку нужно вести в отдельной ветке, без мержей в `main`; ветка нужна именно под ВКР.
 - Для доказательства результата достаточно минимального, но убедительного стенда.
-- Можно использовать весь репозиторий `/Users/gently/projects/bugreport-root/bugget`, включая `nginx` и `docker-compose`. Полноценный пользовательский интерфейс не нужно включать в доказательный контур ВКР: достаточно минимального проверочного клиента.
+- Можно использовать весь репозиторий `/Users/gently/projects/bugget-fqw`, включая `nginx` и `docker-compose`. Полноценный пользовательский интерфейс не нужно включать в доказательный контур ВКР: достаточно минимального проверочного клиента.
 - Примеры из `examples.zip` разрешено распаковать и использовать как ориентир по структуре.
 
 ## Ключевые технические наблюдения
@@ -74,15 +75,15 @@
 ## Текущий статус реализации
 
 - Рабочая ветка продукта: `thesis/realtime-scaleout`.
-- Стенд с Redis backplane запускается через `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml`.
-- Режим без backplane запускается через комбинацию `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.yml` и `/Users/gently/projects/bugreport-root/bugget/docker-compose.thesis.no-backplane.yml`.
-- Для thesis-стенда добавлен отдельный nginx-конфиг `/Users/gently/projects/bugreport-root/bugget/nginx/nginx.thesis.conf`, который проксирует HTTP/WebSocket-трафик на upstream `app-api` и не зависит от дополнительных продуктовых сервисов.
+- Стенд с Redis backplane запускается через `/Users/gently/projects/bugget-fqw/docker-compose.thesis.yml`.
+- Режим без backplane запускается через комбинацию `/Users/gently/projects/bugget-fqw/docker-compose.thesis.yml` и `/Users/gently/projects/bugget-fqw/docker-compose.thesis.no-backplane.yml`.
+- Для thesis-стенда добавлен отдельный nginx-конфиг `/Users/gently/projects/bugget-fqw/nginx/nginx.thesis.conf`, который проксирует HTTP/WebSocket-трафик на upstream `app-api` и не зависит от дополнительных продуктовых сервисов.
 - Сервисы стенда в compose названы `app-api-1`, `app-api-2`, `redis_app_thesis`, `postgres_app_thesis`, `nginx_app_thesis`.
-- Минимальный проверочный клиент находится в `/Users/gently/projects/bugreport-root/bugget/scripts/realtime-scaleout-check.mjs`.
+- Минимальный проверочный клиент находится в `/Users/gently/projects/bugget-fqw/scripts/realtime-scaleout-check.mjs`.
 - Автоматизированный сценарий `node scripts/realtime-scaleout-check.mjs` или `npm run test:realtime-scaleout` подтвердил доставку события между `app-api-1` и `app-api-2` при включенном Redis backplane.
-- Проверочный клиент расширен серийным режимом `THESIS_ITERATIONS=N`; прогретый прогон `THESIS_ITERATIONS=5 node scripts/realtime-scaleout-check.mjs` дал 5 успешных доставок из 5, `avg = 8,4 мс`, `p50 = 9,1 мс`, `p95 = 11,6 мс`.
-- Режим `THESIS_SCENARIO=rejoin` подтвердил повторное вступление клиента в группу после разрыва соединения: новый `connectionId`, последующее событие получено, `reconnectAndRejoinMs = 12,9 мс`.
-- Режим `THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000` подтвердил восстановление после остановки `app-api-2`: клиент через nginx перешел с `app-api-2` на `app-api-1`, повторно вступил в группу и получил событие; `failoverReconnectAndRejoinMs = 240,3 мс`.
+- Проверочный клиент расширен серийным режимом `THESIS_ITERATIONS=N`; прогон `THESIS_ITERATIONS=30 node scripts/realtime-scaleout-check.mjs` от 23.05.2026 дал 30 успешных доставок из 30, `avg = 7,2 мс`, `p50 = 6,1 мс`, `p95 = 13,8 мс`.
+- Режим `THESIS_SCENARIO=rejoin` подтвердил повторное вступление клиента в группу после разрыва соединения: новый `connectionId`, последующее событие получено, `reconnectAndRejoinMs = 6,5 мс`.
+- Режим `THESIS_SCENARIO=failover THESIS_ALLOW_DOCKER_CONTROL=1 THESIS_TIMEOUT_MS=20000` подтвердил восстановление после остановки `app-api-2`: клиент через nginx перешел с `app-api-2` на `app-api-1`, повторно вступил в группу и получил событие; `failoverReconnectAndRejoinMs = 352,0 мс`.
 - При отключенном backplane тот же сценарий завершался timeout, что фиксирует исходное ограничение multi-instance режима.
 
 ## Важные ограничения по оформлению

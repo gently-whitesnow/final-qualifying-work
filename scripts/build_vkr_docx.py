@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sys
+import textwrap
 import zipfile
 from pathlib import Path
 
@@ -29,8 +30,11 @@ STUDENT_FULL = "Зайцев Александр Сергеевич"
 STUDENT_INSTR = "Зайцевым Александром Сергеевичем"
 STUDENT_SHORT = "А.С. Зайцев"
 GROUP = "4131з"
-SUPERVISOR = "С.А. Рогачев"
-SUPERVISOR_ROLE = "ст. преподаватель"
+VKR_SUPERVISOR = "А.В. Фомин"
+VKR_SUPERVISOR_FULL = "Фомин Александр Владимирович"
+VKR_SUPERVISOR_ROLE = "канд. техн. наук, доцент"
+PRACTICE_SUPERVISOR = "С.А. Рогачев"
+PRACTICE_SUPERVISOR_ROLE = "ст. преподаватель"
 CITY_YEAR = "Санкт-Петербург 2026"
 FONT_REGULAR = Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf")
 FONT_BOLD = Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf")
@@ -161,6 +165,14 @@ def add_figure_title(draw: ImageDraw.ImageDraw, title: str):
     draw.text(((1600 - (bbox[2] - bbox[0])) // 2, 30), title, fill="#111111", font=font)
 
 
+def draw_author_marker(draw: ImageDraw.ImageDraw, xy: tuple[int, int, int, int], text: str = "Разработано в рамках ВКР"):
+    x1, y1, x2, y2 = xy
+    font = pil_font(19, bold=True)
+    draw.rounded_rectangle(xy, radius=12, fill="#E8F3F1", outline="#0A6E73", width=3)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    draw.text((x1 + ((x2 - x1) - (bbox[2] - bbox[0])) // 2, y1 + ((y2 - y1) - (bbox[3] - bbox[1])) // 2 - 2), text, fill="#0A4C4C", font=font)
+
+
 def create_single_node_figure(path: Path):
     img = Image.new("RGB", (1600, 900), "white")
     draw = ImageDraw.Draw(img)
@@ -186,6 +198,36 @@ def create_single_node_figure(path: Path):
     img.save(path)
 
 
+def create_no_backplane_figure(path: Path):
+    img = Image.new("RGB", (1600, 900), "white")
+    draw = ImageDraw.Draw(img)
+    add_figure_title(draw, "Multi-instance без backplane")
+    node_fill = "#EEF3FA"
+    service_fill = "#F9F0DF"
+    group_fill = "#FCECEB"
+    draw_box(draw, (80, 170, 320, 280), "Клиент A", fill=node_fill)
+    draw_box(draw, (80, 500, 320, 610), "Клиент B", fill=node_fill)
+    draw_box(draw, (440, 330, 680, 450), "nginx", fill="#F3F3F3", bold=True)
+    draw_box(draw, (810, 160, 1100, 280), "app-api-1", fill=service_fill, bold=True)
+    draw_box(draw, (810, 520, 1100, 640), "app-api-2", fill=service_fill, bold=True)
+    draw_box(draw, (1220, 130, 1510, 310), "Локальные группы SignalR узла 1", fill=group_fill)
+    draw_box(draw, (1220, 490, 1510, 670), "Локальные группы SignalR узла 2", fill=group_fill)
+    draw_arrow(draw, (320, 225), (440, 360))
+    draw_arrow(draw, (320, 555), (440, 420))
+    draw_arrow(draw, (680, 360), (810, 220))
+    draw_arrow(draw, (680, 420), (810, 580))
+    draw_arrow(draw, (1100, 220), (1220, 220), color="#0A6E73")
+    draw_arrow(draw, (1100, 580), (1220, 580), color="#0A6E73")
+    draw.line((1110, 330, 1210, 470), fill="#C0392B", width=8)
+    draw.line((1110, 470, 1210, 330), fill="#C0392B", width=8)
+    small = pil_font(24, bold=True)
+    note = "Событие, созданное на app-api-1, не попадает в локальные группы app-api-2."
+    draw.rounded_rectangle((120, 770, 1480, 850), radius=14, fill="#FFF3D8", outline="#C76F2E", width=3)
+    bbox = draw.textbbox((0, 0), note, font=small)
+    draw.text(((1600 - (bbox[2] - bbox[0])) // 2, 797), note, fill="#111111", font=small)
+    img.save(path)
+
+
 def create_scaleout_figure(path: Path):
     img = Image.new("RGB", (1600, 900), "white")
     draw = ImageDraw.Draw(img)
@@ -201,6 +243,9 @@ def create_scaleout_figure(path: Path):
     draw_box(draw, (820, 500, 1110, 620), "app-api-2", fill=service_fill, bold=True)
     draw_box(draw, (1260, 330, 1510, 450), "Redis backplane", fill=broker_fill, bold=True)
     draw_box(draw, (1260, 650, 1510, 770), "PostgreSQL", fill=data_fill)
+    draw_author_marker(draw, (1175, 270, 1560, 315), "Redis backplane: разработано")
+    draw_author_marker(draw, (760, 95, 1180, 140), "SERVER_INSTANCE_ID + diagnostics")
+    draw_author_marker(draw, (760, 660, 1180, 705), "compose/nginx стенд")
     draw_arrow(draw, (320, 225), (440, 360))
     draw_arrow(draw, (320, 555), (440, 420))
     draw_arrow(draw, (680, 360), (820, 240))
@@ -210,9 +255,10 @@ def create_scaleout_figure(path: Path):
     draw_arrow(draw, (1110, 270), (1260, 690), color="#4C7A38")
     draw_arrow(draw, (1110, 590), (1260, 730), color="#4C7A38")
     note_font = pil_font(24)
-    note = "Redis backplane передает SignalR-события между экземплярами app-api."
+    note = "В рамках ВКР добавлены Redis backplane, diagnostics, multi-instance compose/nginx стенд."
     draw.rounded_rectangle((120, 790, 1480, 855), radius=14, fill="#FFF8D6", outline="#D2B43A", width=2)
-    draw.text((220, 812), note, fill="#111111", font=note_font)
+    bbox = draw.textbbox((0, 0), note, font=note_font)
+    draw.text(((1600 - (bbox[2] - bbox[0])) // 2, 812), note, fill="#111111", font=note_font)
     img.save(path)
 
 
@@ -230,11 +276,11 @@ def create_event_flow_figure(path: Path):
         draw_box(draw, (x - 105, 95, x + 105, 165), label, fill="#EEF3FA" if "Клиент" in label else "#F9F0DF")
         draw.line((x, top, x, bottom), fill="#999999", width=2)
     steps = [
-        (0, 1, 230, "1. Изменение отчета"),
-        (1, 1, 315, "2. Сохранение состояния"),
-        (1, 2, 400, "3. Публикация события группы"),
-        (2, 3, 485, "4. Межузловая доставка"),
-        (3, 4, 570, "5. ReceiveReportPatch"),
+        (0, 1, 230, "1. HTTP-команда изменения отчета"),
+        (1, 1, 315, "2. Сохранение состояния в БД"),
+        (1, 2, 400, "3. Публикация UI-события"),
+        (2, 3, 485, "4. Доставка через Redis backplane"),
+        (3, 4, 570, "5. Получение на другом узле"),
     ]
     for src, dst, y, label in steps:
         if src == dst:
@@ -248,6 +294,7 @@ def create_event_flow_figure(path: Path):
             bbox = draw.textbbox((0, 0), label, font=small)
             draw.text((mid - (bbox[2] - bbox[0]) // 2, y - 35), label, fill="#111111", font=small)
     draw.rounded_rectangle((145, 795, 1455, 855), radius=14, fill="#FFF8D6", outline="#D2B43A", width=2)
+    draw_author_marker(draw, (440, 650, 1160, 700), "ReportPageHubClient + проверочный Node.js-клиент")
     note = "Ключевой проверяемый факт: клиент B получает событие, хотя подключен к другому узлу."
     bbox = draw.textbbox((0, 0), note, font=small)
     draw.text(((1600 - (bbox[2] - bbox[0])) // 2, 814), note, fill="#111111", font=small)
@@ -258,12 +305,14 @@ def ensure_figures() -> list[Path]:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     figures = [
         ASSET_DIR / "figure-1-single-node.png",
-        ASSET_DIR / "figure-2-scaleout.png",
-        ASSET_DIR / "figure-3-event-flow.png",
+        ASSET_DIR / "figure-2-no-backplane.png",
+        ASSET_DIR / "figure-3-scaleout.png",
+        ASSET_DIR / "figure-4-event-flow.png",
     ]
     create_single_node_figure(figures[0])
-    create_scaleout_figure(figures[1])
-    create_event_flow_figure(figures[2])
+    create_no_backplane_figure(figures[1])
+    create_scaleout_figure(figures[2])
+    create_event_flow_figure(figures[3])
     return figures
 
 
@@ -288,6 +337,15 @@ def set_cell_borders(cell, **kwargs):
             element.set(qn(f"w:{key}"), str(value))
 
 
+def set_cell_shading(cell, fill: str):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shading = tc_pr.find(qn("w:shd"))
+    if shading is None:
+        shading = OxmlElement("w:shd")
+        tc_pr.append(shading)
+    shading.set(qn("w:fill"), fill)
+
+
 def clear_table_borders(table):
     for row in table.rows:
         for cell in row.cells:
@@ -307,6 +365,9 @@ def set_bottom_border(cell):
 
 
 def set_page_margins(section):
+    section.orientation = WD_ORIENTATION.PORTRAIT
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
     section.top_margin = Cm(2)
     section.bottom_margin = Cm(2)
     section.left_margin = Cm(3)
@@ -343,6 +404,7 @@ def setup_styles(doc: Document):
         style.paragraph_format.line_spacing = 1.5
         style.paragraph_format.space_before = Pt(12 if name == "Heading 1" else 6)
         style.paragraph_format.space_after = Pt(6)
+        style.paragraph_format.page_break_before = False
         style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
     for name in ["Title", "Subtitle"]:
@@ -491,7 +553,11 @@ def add_title_page(doc: Document):
         ("направленности", "02", "Проектирование программных систем"),
     ]
     for r, values in enumerate(rows):
+        if r == 0:
+            line_table.cell(r, 1).merge(line_table.cell(r, 2))
         for c, value in enumerate(values):
+            if r == 0 and c == 2:
+                continue
             set_cell_text(line_table.cell(r, c), value, size=7 if r in [1, 3] else 10)
             if r in [0, 2, 4] and c > 0:
                 set_bottom_border(line_table.cell(r, c))
@@ -511,8 +577,8 @@ def add_title_page(doc: Document):
     set_cell_text(sig.cell(1, 2), "инициалы, фамилия", size=7)
     set_cell_text(sig.cell(2, 0), "Руководитель", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
     set_cell_text(sig.cell(2, 1), "____________________", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(2, 2), SUPERVISOR, size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(3, 0), SUPERVISOR_ROLE, size=7)
+    set_cell_text(sig.cell(2, 2), VKR_SUPERVISOR, size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
+    set_cell_text(sig.cell(3, 0), VKR_SUPERVISOR_ROLE, size=7)
     set_cell_text(sig.cell(3, 1), "подпись, дата", size=7)
     set_cell_text(sig.cell(3, 2), "инициалы, фамилия", size=7)
 
@@ -545,9 +611,9 @@ def add_practice_title_page(doc: Document):
         row.cells[0].width = Cm(5.6)
         row.cells[1].width = Cm(3.8)
         row.cells[2].width = Cm(4.8)
-    set_cell_text(supervisor.cell(0, 0), "Ст. преподаватель", size=11)
+    set_cell_text(supervisor.cell(0, 0), PRACTICE_SUPERVISOR_ROLE, size=11)
     set_cell_text(supervisor.cell(0, 1), "", size=11)
-    set_cell_text(supervisor.cell(0, 2), SUPERVISOR, size=11)
+    set_cell_text(supervisor.cell(0, 2), PRACTICE_SUPERVISOR, size=11)
     for c in range(3):
         set_bottom_border(supervisor.cell(0, c))
     set_cell_text(supervisor.cell(1, 0), "должность, уч. степень, звание", size=7)
@@ -630,8 +696,36 @@ def add_assignment_page(doc: Document):
     add_left(doc, "Содержание работы (основные разделы): анализ предметной области, постановка задачи, проектирование масштабируемого real-time контура, реализация, испытания и оценка результатов.", first_line=0)
     add_left(doc, "Срок сдачи работы «___» __________ 2026 г.", first_line=0)
     doc.add_paragraph()
-    add_left(doc, f"Руководитель {SUPERVISOR_ROLE} ____________________ {SUPERVISOR}", first_line=0)
-    add_left(doc, f"Задание принял к исполнению студент группы № {GROUP} ____________________ {STUDENT_SHORT}", first_line=0)
+    add_left(doc, "Руководитель", first_line=0)
+    supervisor = doc.add_table(rows=2, cols=3)
+    clear_table_borders(supervisor)
+    set_table_cell_margins(supervisor, 0)
+    widths = [Cm(5.5), Cm(3.5), Cm(7.0)]
+    for row in supervisor.rows:
+        for i, cell in enumerate(row.cells):
+            cell.width = widths[i]
+    set_cell_text(supervisor.cell(0, 0), VKR_SUPERVISOR_ROLE, size=11)
+    set_cell_text(supervisor.cell(0, 1), "", size=11)
+    set_cell_text(supervisor.cell(0, 2), VKR_SUPERVISOR_FULL, size=10)
+    for c in range(3):
+        set_bottom_border(supervisor.cell(0, c))
+    set_cell_text(supervisor.cell(1, 0), "должность, уч. степень, звание", size=7)
+    set_cell_text(supervisor.cell(1, 1), "подпись, дата", size=7)
+    set_cell_text(supervisor.cell(1, 2), "фамилия, имя, отчество", size=7)
+
+    add_left(doc, f"Задание принял к исполнению студент группы № {GROUP}", first_line=0)
+    student = doc.add_table(rows=2, cols=2)
+    clear_table_borders(student)
+    set_table_cell_margins(student, 0)
+    for row in student.rows:
+        row.cells[0].width = Cm(8.0)
+        row.cells[1].width = Cm(8.0)
+    set_cell_text(student.cell(0, 0), "", size=11)
+    set_cell_text(student.cell(0, 1), STUDENT_SHORT, size=11)
+    for c in range(2):
+        set_bottom_border(student.cell(0, c))
+    set_cell_text(student.cell(1, 0), "подпись, дата", size=7)
+    set_cell_text(student.cell(1, 1), "инициалы, фамилия", size=7)
 
 
 def add_field(paragraph, instr_text: str):
@@ -659,9 +753,8 @@ def add_abstract(doc: Document):
     p = doc.add_heading("РЕФЕРАТ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     facts = (
-        "Выпускная квалификационная работа содержит введение, пять глав, заключение, "
-        "список использованных источников из 20 наименований и приложения. "
-        "Количество страниц, рисунков и таблиц уточняется после финальной верстки."
+        "Выпускная квалификационная работа содержит 40 страниц, 4 рисунка, "
+        "2 таблицы, список использованных источников из 20 наименований и 3 приложения."
     )
     add_body_paragraph(doc, facts)
     add_body_paragraph(
@@ -744,49 +837,51 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
         ]
     else:
         entries = [
-        (1, "РЕФЕРАТ", 1),
-        (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 3),
-        (1, "ВВЕДЕНИЕ", 4),
-        (1, "1. Анализ предметной области и существующих подходов", 7),
-        (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 7),
-        (2, "1.2 WebSocket и SignalR как основа real-time контура", 8),
-        (2, "1.3 Ограничение single-node WebSocket-архитектуры", 8),
-        (2, "1.4 Сравнение подходов к масштабированию", 9),
-        (2, "1.5 Вывод по главе", 10),
-        (1, "2. Анализ целевой системы и постановка задачи", 11),
-        (2, "2.1 Характеристика целевой системы", 11),
-        (2, "2.2 Исходная реализация real-time взаимодействия", 11),
-        (2, "2.3 Требования к разрабатываемому решению", 12),
-        (2, "2.4 Выбор платформы и инструментальных средств", 13),
-        (2, "2.5 Постановка задачи", 13),
-        (1, "3. Проектирование масштабируемого real-time контура", 15),
-        (2, "3.1 Исходная архитектура", 15),
-        (2, "3.2 Целевая архитектура", 15),
-        (2, "3.3 Поток real-time события", 16),
-        (2, "3.4 Модель групп и повторной подписки", 17),
-        (2, "3.5 Диагностический контур", 18),
-        (1, "4. Реализация решения в целевой системе", 19),
-        (2, "4.1 Организация работ", 19),
-        (2, "4.2 Изменения backend", 19),
-        (2, "4.3 Проверочный клиент", 20),
-        (2, "4.4 Инфраструктурные изменения", 20),
-        (2, "4.5 Автоматизированный сценарий проверки", 21),
-        (1, "5. Испытания и оценка результатов", 23),
-        (2, "5.1 Цель и программа испытаний", 23),
-        (2, "5.2 Стенд испытаний", 23),
-        (2, "5.3 Результат без Redis backplane", 24),
-        (2, "5.4 Результат с Redis backplane", 24),
-        (2, "5.5 Серийная проверка и задержка доставки", 25),
-        (2, "5.6 Проверка восстановления соединения и отказа узла", 26),
-        (2, "5.7 Сравнительная таблица результатов", 26),
-        (2, "5.8 Проверка входной точки стенда", 27),
-        (2, "5.9 Оценка достоверности результатов", 27),
-        (2, "5.10 Вывод по испытаниям", 28),
-        (1, "ЗАКЛЮЧЕНИЕ", 28),
-        (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 30),
-        (1, "ПРИЛОЖЕНИЕ А", 32),
-        (1, "ПРИЛОЖЕНИЕ Б", 34),
-        (1, "ПРИЛОЖЕНИЕ В", 35),
+            (1, "РЕФЕРАТ", 1),
+            (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 3),
+            (1, "ВВЕДЕНИЕ", 4),
+            (1, "1. Анализ предметной области и существующих подходов", 8),
+            (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 8),
+            (2, "1.2 WebSocket и SignalR как основа real-time контура", 9),
+            (2, "1.3 Ограничение single-node WebSocket-архитектуры", 9),
+            (2, "1.4 Сравнение подходов к масштабированию", 10),
+            (2, "1.5 Вывод по главе", 12),
+            (1, "2. Анализ целевой системы и постановка задачи", 13),
+            (2, "2.1 Характеристика целевой системы", 13),
+            (2, "2.2 Исходная реализация real-time взаимодействия", 13),
+            (2, "2.3 Требования к разрабатываемому решению", 14),
+            (2, "2.4 Выбор платформы и инструментальных средств", 14),
+            (2, "2.5 Постановка задачи", 15),
+            (1, "3. Проектирование масштабируемого real-time контура", 16),
+            (2, "3.1 Исходная архитектура", 16),
+            (2, "3.2 Целевая архитектура", 17),
+            (2, "3.3 Поток real-time события", 18),
+            (2, "3.4 Модель групп и повторной подписки", 19),
+            (2, "3.5 Диагностический контур", 20),
+            (2, "3.6 Семантика доставки и ограничения", 20),
+            (1, "4. Реализация решения в целевой системе", 22),
+            (2, "4.1 Организация работ", 22),
+            (2, "4.2 Изменения backend", 22),
+            (2, "4.3 Изменения frontend", 24),
+            (2, "4.4 Проверочный клиент", 24),
+            (2, "4.5 Инфраструктурные изменения", 25),
+            (2, "4.6 Автоматизированный сценарий проверки", 26),
+            (1, "5. Испытания и оценка результатов", 28),
+            (2, "5.1 Цель и программа испытаний", 28),
+            (2, "5.2 Стенд испытаний", 28),
+            (2, "5.3 Результат без Redis backplane", 29),
+            (2, "5.4 Результат с Redis backplane", 29),
+            (2, "5.5 Серийная проверка и задержка доставки", 30),
+            (2, "5.6 Проверка восстановления соединения и отказа узла", 31),
+            (2, "5.7 Сравнительная таблица результатов", 31),
+            (2, "5.8 Проверка входной точки стенда", 32),
+            (2, "5.9 Оценка достоверности результатов", 32),
+            (2, "5.10 Вывод по испытаниям", 33),
+            (1, "ЗАКЛЮЧЕНИЕ", 33),
+            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 35),
+            (1, "ПРИЛОЖЕНИЕ А", 36),
+            (1, "ПРИЛОЖЕНИЕ Б", 37),
+            (1, "ПРИЛОЖЕНИЕ В", 38),
         ]
     for level, title, page in entries:
         add_toc_line(doc, title, page, level=level)
@@ -834,7 +929,9 @@ def add_abbreviations(doc: Document, *, kind: str = "vkr"):
 
 def add_body_paragraph(doc: Document, text: str):
     p = doc.add_paragraph(style="Normal")
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    has_inline_code = "`" in text
+    has_long_token = any(len(token) > 28 for token in re.findall(r"\S+", text))
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT if has_inline_code or has_long_token else WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.first_line_indent = Cm(1.25)
     p.paragraph_format.line_spacing = 1.5
     add_inline_runs(p, text)
@@ -843,7 +940,7 @@ def add_body_paragraph(doc: Document, text: str):
 
 def add_list_item(doc: Document, text: str, *, numbered: bool = True, index: int = 1):
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.left_indent = Cm(1.25)
     p.paragraph_format.first_line_indent = Cm(-0.75)
     p.paragraph_format.line_spacing = 1.5
@@ -871,19 +968,43 @@ def add_code_block(doc: Document, code: str, language: str | None, figure_paths:
     if language == "mermaid":
         captions = [
             "Рисунок 1 — Исходная single-node архитектура real-time контура",
-            "Рисунок 2 — Целевая multi-instance архитектура с Redis backplane",
-            "Рисунок 3 — Последовательность межузловой доставки события ReceiveReportPatch",
+            "Рисунок 2 — Multi-instance архитектура без backplane и фрагментация локальных SignalR-групп",
+            "Рисунок 3 — Целевая multi-instance архитектура с Redis backplane и элементами, разработанными в рамках ВКР",
+            "Рисунок 4 — Последовательность межузловой доставки события ReceiveReportPatch",
         ]
         if figure_idx < len(figure_paths):
             add_figure(doc, figure_paths[figure_idx], captions[figure_idx])
         return figure_idx + 1
-    for line in code.strip("\n").splitlines():
-        p = doc.add_paragraph()
-        p.paragraph_format.first_line_indent = Cm(0)
-        p.paragraph_format.left_indent = Cm(1.25)
-        p.paragraph_format.line_spacing = 1.0
-        run = p.add_run(line)
-        set_run_font(run, size=10, name="Courier New")
+    table = doc.add_table(rows=1, cols=1)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.style = "Table Grid"
+    set_table_cell_margins(table, 90)
+    cell = table.cell(0, 0)
+    cell.width = Cm(15.5)
+    set_cell_shading(cell, "F7F7F7")
+    cell.text = ""
+    lines = code.strip("\n").splitlines() or [""]
+    first = True
+    for original_line in lines:
+        wrapped = textwrap.wrap(
+            original_line,
+            width=92,
+            subsequent_indent="    ",
+            replace_whitespace=False,
+            drop_whitespace=False,
+            break_long_words=True,
+            break_on_hyphens=False,
+        ) or [""]
+        for line in wrapped:
+            p = cell.paragraphs[0] if first else cell.add_paragraph()
+            first = False
+            p.paragraph_format.first_line_indent = Cm(0)
+            p.paragraph_format.left_indent = Cm(0)
+            p.paragraph_format.line_spacing = 0.95
+            p.paragraph_format.space_after = Pt(0)
+            run = p.add_run(line)
+            set_run_font(run, size=8, name="Courier New")
+    doc.add_paragraph().paragraph_format.space_after = Pt(2)
     return figure_idx
 
 
@@ -892,6 +1013,15 @@ def set_row_as_header(row):
     existing = tr_pr.find(qn("w:tblHeader"))
     if existing is None:
         existing = OxmlElement("w:tblHeader")
+        tr_pr.append(existing)
+    existing.set(qn("w:val"), "true")
+
+
+def set_row_cant_split(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    existing = tr_pr.find(qn("w:cantSplit"))
+    if existing is None:
+        existing = OxmlElement("w:cantSplit")
         tr_pr.append(existing)
     existing.set(qn("w:val"), "true")
 
@@ -910,11 +1040,13 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
         return table_idx
 
     captions = {
+        "N": "Сравнение подходов к масштабированию WebSocket-соединений",
         "Подход": "Сравнение подходов к масштабированию WebSocket-соединений",
         "Режим": "Сравнительная таблица результатов испытаний",
     }
     caption_text = captions.get(rows[0][0], "Сравнительные данные")
     is_results_table = rows[0][0] == "Режим"
+    is_approach_table = rows[0][0] == "N"
 
     cap = doc.add_paragraph()
     cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -928,18 +1060,21 @@ def add_markdown_table(doc: Document, lines: list[str], table_idx: int) -> int:
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-    cell_size = 10 if is_results_table else 11
+    cell_size = 9 if is_approach_table else (10 if is_results_table else 11)
     for c, text in enumerate(rows[0]):
         set_cell_text(table.cell(0, c), text, size=cell_size, bold=True)
     set_row_as_header(table.rows[0])
+    set_row_cant_split(table.rows[0])
     for row in rows[1:]:
-        cells = table.add_row().cells
+        row_obj = table.add_row()
+        cells = row_obj.cells
         for c, text in enumerate(row[: len(cells)]):
             set_cell_text(cells[c], text, size=cell_size, align=WD_ALIGN_PARAGRAPH.LEFT)
+        set_row_cant_split(row_obj)
 
-    if is_results_table:
+    if is_approach_table or is_results_table:
         usable_width = Cm(16.5)
-        weights = [2.4, 1.0, 2.6, 2.6, 2.2][: len(rows[0])]
+        weights = ([0.6, 2.6, 2.1, 4.4, 3.8] if is_approach_table else [2.4, 1.0, 2.6, 2.6, 2.2])[: len(rows[0])]
         total = sum(weights)
         col_widths = [Cm(usable_width.cm * w / total) for w in weights]
         for c, w in enumerate(col_widths):
@@ -1137,9 +1272,9 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
 
 
 def add_appendices(doc: Document, *, kind: str = "vkr"):
-    doc.add_page_break()
     p = doc.add_heading("ПРИЛОЖЕНИЕ А", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.page_break_before = True
     add_centered(doc, "Конфигурация стенда", bold=True)
     if kind == "practice":
         add_body_paragraph(
@@ -1182,11 +1317,11 @@ Multi-instance с Redis backplane:
   deliveryLatencyMs: 9.5
 
 Серийная проверка:
-  iterations: 5
-  successful: 5
+  iterations: 30
+  successful: 30
   failed: 0
-  avg: 8.4 ms
-  p95: 11.6 ms""",
+  avg: 7.2 ms
+  p95: 13.8 ms""",
             "text",
             [],
             0,
@@ -1343,21 +1478,21 @@ Multi-instance с Redis backplane:
   nodeB.serverInstanceId: app-api-2
   deliveryLatencyMs: 9.5
 
-THESIS_ITERATIONS=5:
-  successful: 5
+THESIS_ITERATIONS=30:
+  successful: 30
   failed: 0
-  avg: 8.4 ms
-  p50: 9.1 ms
-  p95: 11.6 ms
+  avg: 7.2 ms
+  p50: 6.1 ms
+  p95: 13.8 ms
 
 THESIS_SCENARIO=rejoin:
-  reconnectAndRejoinMs: 12.9
-  deliveryLatencyMs: 6.6
+  reconnectAndRejoinMs: 6.5
+  deliveryLatencyMs: 15.2
 
 THESIS_SCENARIO=failover:
   app-api-2 -> app-api-1
-  failoverReconnectAndRejoinMs: 240.3
-  deliveryLatencyMs: 7.3""",
+  failoverReconnectAndRejoinMs: 352.0
+  deliveryLatencyMs: 5.4""",
         "text",
         [],
         0,

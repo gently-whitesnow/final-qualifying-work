@@ -10,6 +10,7 @@
 - Методические требования: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Практика2026заочное.pdf`
 - Пособие по оформлению: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/Программная_инженерия._Требования_к_подготовке_и_содержанию_отчетов_по_практике.pdf`
 - Индивидуальное задание: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ИндивидуальноеЗадание2026заоч.docx`
+- Заявление на ВКР с актуальным научным руководителем: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ВКР Зайцев.pdf`
 - Шаблон титульного листа практики: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/ТитульныйЛист2026заочное.docx`
 - Примеры ВКР: `/Users/gently/projects/final-qualifying-work/materials/00-source-documents/examples_extracted/examples`
 
@@ -21,7 +22,8 @@
 - Направление подготовки: 09.03.04 Программная инженерия
 - Направленность: 02 Проектирование программных систем
 - Кафедра: №43 «Компьютерных технологий и программной инженерии»
-- Руководитель: ст. преподаватель С.А. Рогачев
+- Научный руководитель ВКР: канд. техн. наук, доцент А.В. Фомин
+- Руководитель практики: ст. преподаватель С.А. Рогачев
 - Город и год: Санкт-Петербург 2026
 
 Если нужны приказ, дата утверждения, заведующий кафедрой, точная формулировка допуска к защите или подписи, их нужно уточнить вручную или взять из актуальных кафедральных документов.
