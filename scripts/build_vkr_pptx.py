@@ -10,6 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "build" / "pptx"
 OUT_PPTX = OUT_DIR / "vkr-defense-draft.pptx"
 PRACTICE_OUT_PPTX = OUT_DIR / "practice-defense-draft.pptx"
+DASHBOARD_IMAGE = ROOT / "materials" / "04-docx" / "assets" / "interface-dashboard.png"
+REPORT_IMAGE = ROOT / "materials" / "04-docx" / "assets" / "interface-report-page.png"
+MEDIA_IMAGES = {
+    "interface-dashboard.png": DASHBOARD_IMAGE,
+    "interface-report-page.png": REPORT_IMAGE,
+}
 
 SLIDE_W = 12_192_000
 SLIDE_H = 6_858_000
@@ -140,6 +146,26 @@ def connector(
       </p:cxnSp>"""
 
 
+def picture(sid: int, x: float, y: float, w: float, h: float, *, name: str, rid: str = "rId2") -> str:
+    return f"""
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="{sid}" name="{e(name)}"/>
+          <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="{rid}"/>
+          <a:stretch><a:fillRect/></a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm><a:off x="{inch(x)}" y="{inch(y)}"/><a:ext cx="{inch(w)}" cy="{inch(h)}"/></a:xfrm>
+          <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+          <a:ln w="12700"><a:solidFill><a:srgbClr val="D7D2C7"/></a:solidFill></a:ln>
+        </p:spPr>
+      </p:pic>"""
+
+
 def title(sid: int, text: str, subtitle: str | None = None) -> str:
     parts = [
         shape(sid, 0.65, 0.45, 11.9, 0.72, text, fill="", line="", size=30, bold=True),
@@ -171,10 +197,18 @@ def slide_xml(n: int, body: str) -> str:
 </p:sld>"""
 
 
-def slide_rels() -> str:
-    return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+def slide_rels(media_name: str | None = None) -> str:
+    media_rel = ""
+    if media_name:
+        media_rel = (
+            f'\n  <Relationship Id="rId2" '
+            f'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+            f'Target="../media/{media_name}"/>'
+        )
+    return f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  {media_rel}
 </Relationships>"""
 
 
@@ -209,7 +243,15 @@ def title_slide(kind: str) -> str:
     )
 
 
-def deck_slides(kind: str = "vkr") -> list[str]:
+def product_image_slide(title_text: str, subtitle: str, image_name: str) -> str:
+    return (
+        title(10, title_text, subtitle)
+        + shape(20, 1.18, 1.48, 10.94, 5.52, "", fill=PANEL, line="D7D2C7", radius=False)
+        + picture(21, 1.25, 1.55, 10.8, 5.46, name=image_name)
+    )
+
+
+def deck_slides(kind: str = "vkr") -> list[str | tuple[str, str]]:
     work_word = "практики" if kind == "practice" else "работы"
     goal_label = "Цель преддипломной практики" if kind == "practice" else "Цель работы"
 
@@ -237,11 +279,31 @@ def deck_slides(kind: str = "vkr") -> list[str]:
         x, y, w, h = box
         return x + w, y + h / 2 + dy
 
-    return [
-        # 1. Title
-        title_slide(kind),
+    slides: list[str | tuple[str, str]] = [title_slide(kind)]
+    if kind == "vkr":
+        slides.extend(
+            [
+                (
+                    product_image_slide(
+                        "Целевой продукт: дашборд",
+                        "Пользователь видит отчёты команды, статусы, ответственных и активность по задачам",
+                        "interface-dashboard.png",
+                    ),
+                    "interface-dashboard.png",
+                ),
+                (
+                    product_image_slide(
+                        "Целевой продукт: страница отчёта",
+                        "Основной рабочий экран: отчёт, баги, шаги воспроизведения, комментарии и участники",
+                        "interface-report-page.png",
+                    ),
+                    "interface-report-page.png",
+                ),
+            ]
+        )
 
-        # 2. Проблема и цель работы
+    slides.extend([
+        # Проблема и цель работы
         title(10, "Проблема и цель", "Single-node SignalR ограничивает горизонтальное масштабирование")
         + shape(20, 0.75, 1.65, 5.85, 4.6,
                 "Проблема\n\n"
@@ -480,7 +542,8 @@ def deck_slides(kind: str = "vkr") -> list[str]:
                 "Доказательство\n\n"
                 "Доставка (без / с) · серия · восстановление подписки · переключение после отказа.",
                 fill=PANEL, size=13, bold=True),
-    ]
+    ])
+    return slides
 
 
 def content_types(slide_count: int) -> str:
@@ -492,6 +555,7 @@ def content_types(slide_count: int) -> str:
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
   <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
@@ -578,9 +642,17 @@ def build(kind: str = "vkr") -> Path:
         z.writestr("ppt/_rels/presentation.xml.rels", presentation_rels(len(slides)))
         for path, content in static_parts().items():
             z.writestr(path, content)
-        for i, body in enumerate(slides, start=1):
+        written_media: set[str] = set()
+        for i, slide in enumerate(slides, start=1):
+            if isinstance(slide, tuple):
+                body, media_name = slide
+            else:
+                body, media_name = slide, None
             z.writestr(f"ppt/slides/slide{i}.xml", slide_xml(i, body))
-            z.writestr(f"ppt/slides/_rels/slide{i}.xml.rels", slide_rels())
+            z.writestr(f"ppt/slides/_rels/slide{i}.xml.rels", slide_rels(media_name))
+            if media_name and media_name not in written_media:
+                z.write(MEDIA_IMAGES[media_name], f"ppt/media/{media_name}")
+                written_media.add(media_name)
     return out_path
 
 
