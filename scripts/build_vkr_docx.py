@@ -176,7 +176,7 @@ def draw_author_marker(draw: ImageDraw.ImageDraw, xy: tuple[int, int, int, int],
 def create_single_node_figure(path: Path):
     img = Image.new("RGB", (1600, 900), "white")
     draw = ImageDraw.Draw(img)
-    add_figure_title(draw, "Исходная single-node архитектура")
+    add_figure_title(draw, "Исходная одноузловая архитектура")
     node_fill = "#EEF3FA"
     service_fill = "#F9F0DF"
     data_fill = "#EAF6EA"
@@ -201,7 +201,7 @@ def create_single_node_figure(path: Path):
 def create_no_backplane_figure(path: Path):
     img = Image.new("RGB", (1600, 900), "white")
     draw = ImageDraw.Draw(img)
-    add_figure_title(draw, "Multi-instance без backplane")
+    add_figure_title(draw, "Несколько экземпляров без Redis backplane")
     node_fill = "#EEF3FA"
     service_fill = "#F9F0DF"
     group_fill = "#FCECEB"
@@ -231,7 +231,7 @@ def create_no_backplane_figure(path: Path):
 def create_scaleout_figure(path: Path):
     img = Image.new("RGB", (1600, 900), "white")
     draw = ImageDraw.Draw(img)
-    add_figure_title(draw, "Целевая multi-instance архитектура")
+    add_figure_title(draw, "Целевая архитектура с несколькими экземплярами")
     node_fill = "#EEF3FA"
     service_fill = "#F9F0DF"
     data_fill = "#EAF6EA"
@@ -244,7 +244,7 @@ def create_scaleout_figure(path: Path):
     draw_box(draw, (1260, 330, 1510, 450), "Redis backplane", fill=broker_fill, bold=True)
     draw_box(draw, (1260, 650, 1510, 770), "PostgreSQL", fill=data_fill)
     draw_author_marker(draw, (1175, 270, 1560, 315), "Redis backplane: разработано")
-    draw_author_marker(draw, (760, 95, 1180, 140), "SERVER_INSTANCE_ID + diagnostics")
+    draw_author_marker(draw, (760, 95, 1180, 140), "SERVER_INSTANCE_ID + диагностика")
     draw_author_marker(draw, (760, 660, 1180, 705), "compose/nginx стенд")
     draw_arrow(draw, (320, 225), (440, 360))
     draw_arrow(draw, (320, 555), (440, 420))
@@ -255,7 +255,7 @@ def create_scaleout_figure(path: Path):
     draw_arrow(draw, (1110, 270), (1260, 690), color="#4C7A38")
     draw_arrow(draw, (1110, 590), (1260, 730), color="#4C7A38")
     note_font = pil_font(24)
-    note = "В рамках ВКР добавлены Redis backplane, diagnostics, multi-instance compose/nginx стенд."
+    note = "В рамках ВКР добавлены Redis backplane, диагностика и compose/nginx стенд с несколькими экземплярами."
     draw.rounded_rectangle((120, 790, 1480, 855), radius=14, fill="#FFF8D6", outline="#D2B43A", width=2)
     bbox = draw.textbbox((0, 0), note, font=note_font)
     draw.text(((1600 - (bbox[2] - bbox[0])) // 2, 812), note, fill="#111111", font=note_font)
@@ -753,7 +753,7 @@ def add_abstract(doc: Document):
     p = doc.add_heading("РЕФЕРАТ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     facts = (
-        "Выпускная квалификационная работа содержит 42 страницы, 6 рисунков, "
+        "Выпускная квалификационная работа содержит 44 страницы, 6 рисунков, "
         "2 таблицы, список использованных источников из 20 наименований и 3 приложения."
     )
     add_body_paragraph(doc, facts)
@@ -771,7 +771,7 @@ def add_abstract(doc: Document):
     )
     add_body_paragraph(
         doc,
-        "Полученные результаты: разработан распределенный real-time контур на базе SignalR и Redis backplane, подготовлен воспроизводимый multi-instance стенд, реализованы диагностические средства и проведена экспериментальная проверка межузловой доставки событий.",
+        "Полученные результаты: разработан распределенный real-time контур на базе SignalR и Redis backplane, подготовлен воспроизводимый стенд с несколькими экземплярами, реализованы диагностические средства и проведена экспериментальная проверка межузловой доставки событий.",
     )
     doc.add_page_break()
 
@@ -804,7 +804,7 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (2, "1.6 Вывод по главе", 12),
             (1, "2. Анализ целевой системы и постановка задачи практики", 14),
             (2, "2.1 Характеристика целевой системы", 14),
-            (2, "2.2 Исходная реализация real-time взаимодействия", 14),
+            (2, "2.2 Исходная реализация real-time взаимодействия", 15),
             (2, "2.3 Требования к разрабатываемому решению", 15),
             (2, "2.4 Выбор платформы и инструментальных средств", 16),
             (2, "2.5 Постановка задачи", 16),
@@ -843,7 +843,7 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (1, "1. Анализ предметной области и существующих подходов", 8),
             (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 8),
             (2, "1.2 WebSocket и SignalR как основа real-time контура", 9),
-            (2, "1.3 Ограничение single-node WebSocket-архитектуры", 9),
+            (2, "1.3 Ограничение одноузловой WebSocket-архитектуры", 9),
             (2, "1.4 Сравнение подходов к масштабированию", 10),
             (2, "1.5 Вывод по главе", 12),
             (1, "2. Анализ целевой системы и постановка задачи", 13),
@@ -861,9 +861,9 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (2, "3.6 Семантика доставки и ограничения", 22),
             (1, "4. Реализация решения в целевой системе", 24),
             (2, "4.1 Организация работ", 24),
-            (2, "4.2 Изменения backend", 24),
-            (2, "4.3 Изменения frontend", 25),
-            (2, "4.4 Проверочный клиент", 26),
+            (2, "4.2 Изменения серверной части", 24),
+            (2, "4.3 Изменения клиентской части", 26),
+            (2, "4.4 Проверочный клиент", 27),
             (2, "4.5 Инфраструктурные изменения", 27),
             (2, "4.6 Автоматизированный сценарий проверки", 28),
             (1, "5. Испытания и оценка результатов", 30),
@@ -967,9 +967,9 @@ def add_figure(doc: Document, image_path: Path, caption: str):
 def add_code_block(doc: Document, code: str, language: str | None, figure_paths: list[Path], figure_idx: int) -> int:
     if language == "mermaid":
         captions = [
-            "Рисунок 3 — Исходная single-node архитектура real-time контура",
-            "Рисунок 4 — Multi-instance архитектура без backplane и фрагментация локальных SignalR-групп",
-            "Рисунок 5 — Целевая multi-instance архитектура с Redis backplane и элементами, разработанными в рамках ВКР",
+            "Рисунок 3 — Исходная одноузловая архитектура real-time контура",
+            "Рисунок 4 — Архитектура с несколькими экземплярами без Redis backplane и фрагментация локальных SignalR-групп",
+            "Рисунок 5 — Целевая архитектура с несколькими экземплярами, Redis backplane и элементами, разработанными в рамках ВКР",
             "Рисунок 6 — Последовательность межузловой доставки события ReceiveReportPatch",
         ]
         if figure_idx < len(figure_paths):
@@ -1339,7 +1339,7 @@ Multi-instance с Redis backplane:
 
     add_body_paragraph(
         doc,
-        "Фрагмент `docker-compose.thesis.yml` задает два экземпляра backend-сервиса, общий Redis и диагностические идентификаторы серверных узлов.",
+        "Фрагмент `docker-compose.thesis.yml` задает два экземпляра серверного сервиса, общий Redis и диагностические идентификаторы серверных узлов.",
     )
     add_code_block(
         doc,
@@ -1370,7 +1370,7 @@ redis:
         [],
         0,
     )
-    add_body_paragraph(doc, "Фрагмент `docker-compose.thesis.no-backplane.yml` используется для воспроизведения исходного ограничения multi-instance режима.")
+    add_body_paragraph(doc, "Фрагмент `docker-compose.thesis.no-backplane.yml` используется для воспроизведения исходного ограничения режима с несколькими экземплярами.")
     add_code_block(
         doc,
         """services:
@@ -1385,7 +1385,7 @@ redis:
         [],
         0,
     )
-    add_body_paragraph(doc, "Фрагмент `upstreams.thesis.conf` задает балансировку HTTP- и WebSocket-трафика между двумя экземплярами `app-api`.")
+    add_body_paragraph(doc, "Фрагмент `upstreams.thesis.conf` задает upstream-блок nginx для балансировки HTTP- и WebSocket-трафика между двумя экземплярами `app-api`.")
     add_code_block(
         doc,
         """upstream app-api {
@@ -1398,10 +1398,10 @@ redis:
         0,
     )
 
-    doc.add_page_break()
     p = doc.add_heading("ПРИЛОЖЕНИЕ Б", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_centered(doc, "Фрагменты реализации backend", bold=True)
+    p.paragraph_format.page_break_before = True
+    add_centered(doc, "Фрагменты реализации серверной части", bold=True)
     add_body_paragraph(doc, "Подключение Redis backplane выполняется только при наличии переменной окружения `REDIS_CONNECTION_STRING`.")
     add_code_block(
         doc,
@@ -1436,7 +1436,7 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
         [],
         0,
     )
-    add_body_paragraph(doc, "Централизованная отправка события в группу сохраняет существующие payload'ы и добавляет диагностическое логирование.")
+    add_body_paragraph(doc, "Централизованная отправка события в группу сохраняет существующее содержимое событий и добавляет диагностическое логирование.")
     add_code_block(
         doc,
         """private Task SendToGroupAsync(
@@ -1456,10 +1456,100 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
         0,
     )
 
-    doc.add_page_break()
     p = doc.add_heading("ПРИЛОЖЕНИЕ В", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_centered(doc, "Проверочный клиент и результаты испытаний", bold=True)
+    p.paragraph_format.page_break_before = True
+    add_centered(doc, "Фрагменты клиентского real-time слоя, проверочный клиент и результаты испытаний", bold=True)
+    add_body_paragraph(doc, "Клиентская часть решения относится к real-time слою страницы отчета: построению SignalR WebSocket-соединения, чтению диагностических данных, повторному вступлению в группу после восстановления соединения и тестам этого поведения.")
+    add_code_block(
+        doc,
+        """const reconnectDelays = [0, 2_000, 5_000, 10_000, 30_000, 60_000, 120_000];
+
+export const buildConnection = (): HubConnection => {
+  const wsPath = getAppWebSocketUrl("/report-page-hub", "v1");
+  const fullUrl = `${window.location.origin}${wsPath}`;
+
+  return new HubConnectionBuilder()
+    .withUrl(fullUrl, {
+      transport: HttpTransportType.WebSockets,
+      skipNegotiation: import.meta.env.VITE_SIGNALR_SKIP_NEGOTIATION === "true",
+    })
+    .withAutomaticReconnect(reconnectDelays)
+    .build();
+};""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "После восстановления соединения клиент обновляет диагностические данные и сохраняет актуальный `connectionId`; это позволяет исключать собственное соединение при отправке события и проверять, к какому узлу подключен клиент.")
+    add_code_block(
+        doc,
+        """const refreshConnectionDiagnostics = async (conn: HubConnection) => {
+  const diagnostics = await conn.invoke<ConnectionDiagnostics>(
+    "GetConnectionDiagnosticsAsync"
+  );
+  setSignalRConnectionId(diagnostics.connectionId);
+  connectionDiagnosticsUpdated(diagnostics);
+};
+
+conn.onreconnected((connectionId) => {
+  connectionReconnected();
+  setSignalRConnectionId(connectionId ?? null);
+  void refreshConnectionDiagnostics(conn);
+});""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Страница отчета хранит текущий `reportId` и после reconnect повторно вызывает `JoinReportGroupAsync`, чтобы восстановить membership в SignalR-группе.")
+    add_code_block(
+        doc,
+        """const currentReportId = useRef<string | null>(null);
+
+useEffect(() => {
+  if (!connection) return;
+
+  connection.onreconnected(
+    createReconnectJoinHandler({
+      join,
+      getCurrentReportId: () => currentReportId.current,
+    })
+  );
+}, [connection, join]);
+
+export const createReconnectJoinHandler = ({ join, getCurrentReportId }) => {
+  return () => {
+    const reportId = getCurrentReportId();
+    if (reportId != null) join(reportId);
+  };
+};""",
+        "typescript",
+        [],
+        0,
+    )
+    add_body_paragraph(doc, "Поведение повторного вступления в группу покрыто модульными тестами: проверяются отсутствие лишнего вызова без текущего отчета, повторная подписка после reconnect и использование актуального `reportId`.")
+    add_code_block(
+        doc,
+        """it("uses latest report id on each reconnect", () => {
+  const calls: string[] = [];
+  let currentReportId = "101";
+  const handler = createReconnectJoinHandler({
+    join: (reportId) => calls.push(reportId),
+    getCurrentReportId: () => currentReportId,
+  });
+
+  handler();
+  currentReportId = "202";
+  handler();
+
+  expect(calls).toEqual(["101", "202"]);
+});""",
+        "typescript",
+        [],
+        0,
+    )
+    doc.add_page_break()
+    add_centered(doc, "Проверочный клиент", bold=True)
     add_body_paragraph(doc, "Проверочный клиент подключает два SignalR-соединения к разным узлам, подписывает их на группу отчета и ожидает событие `ReceiveReportPatch` на втором узле.")
     add_code_block(
         doc,
