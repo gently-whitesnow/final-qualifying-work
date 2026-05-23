@@ -251,6 +251,44 @@ def product_image_slide(title_text: str, subtitle: str, image_name: str) -> str:
     )
 
 
+def sdlc_slide() -> str:
+    return (
+        title(
+            10,
+            "Контекст продукта в SDLC компании",
+            "Аналитика → разработка → тестирование → деплой; продукт усиливает этап проверки",
+        )
+        + shape(20, 0.75, 1.78, 2.5, 1.25,
+                "Аналитика\n\nТребования, сценарии, постановка задачи",
+                fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(21, 3.55, 1.78, 2.5, 1.25,
+                "Разработка\n\nРеализация изменений и исправлений",
+                fill=PANEL, size=14, bold=True, align="ctr")
+        + shape(22, 6.35, 1.62, 2.7, 1.58,
+                "Тестирование\n\nБаги, шаги воспроизведения, фактический и ожидаемый результат",
+                fill=SOFT, line=ACCENT, size=14, bold=True, align="ctr")
+        + shape(23, 9.45, 1.78, 2.5, 1.25,
+                "Деплой\n\nВыкладка проверенного изменения",
+                fill=PANEL, size=14, bold=True, align="ctr")
+        + connector(40, 3.25, 2.40, 3.55, 2.40, color=MUTED)
+        + connector(41, 6.05, 2.40, 6.35, 2.40, color=MUTED)
+        + connector(42, 9.05, 2.40, 9.45, 2.40, color=MUTED)
+        + shape(30, 0.75, 4.05, 5.75, 1.6,
+                "Что оптимизирует продукт\n\n"
+                "Фиксирует дефект в рабочем контексте: отчет, баг, участники, статус, шаги воспроизведения, "
+                "фактический и ожидаемый результат.",
+                fill=PANEL, size=15)
+        + shape(31, 6.75, 4.05, 5.85, 1.6,
+                "Почему нужен real-time\n\n"
+                "Тестировщик и разработчик работают с одной страницей отчета. Изменения должны появляться "
+                "у участников без ручного обновления.",
+                fill=SOFT, line=ACCENT, size=15, bold=True)
+        + shape(32, 0.75, 5.92, 11.85, 0.55,
+                "Дальше: как выглядит этот продукт и почему single-node real-time становится ограничением при масштабировании backend.",
+                fill="", line="", size=13, text_color=MUTED, align="ctr")
+    )
+
+
 def deck_slides(kind: str = "vkr") -> list[str | tuple[str, str]]:
     work_word = "практики" if kind == "practice" else "работы"
     goal_label = "Цель преддипломной практики" if kind == "practice" else "Цель работы"
@@ -283,6 +321,7 @@ def deck_slides(kind: str = "vkr") -> list[str | tuple[str, str]]:
     if kind == "vkr":
         slides.extend(
             [
+                sdlc_slide(),
                 (
                     product_image_slide(
                         "Целевой продукт: дашборд",
