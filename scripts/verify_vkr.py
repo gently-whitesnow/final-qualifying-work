@@ -18,9 +18,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCX = ROOT / "build/docx/vkr-draft-1.docx"
 PDF = ROOT / "build/docx/rendered/vkr-draft-1.pdf"
 
-# Печатные страницы нумеруются с третьей физической: титульный лист
-# и страница задания идут без видимых номеров.
-PRINT_PAGE_OFFSET = 2
+# ГОСТ-конвенция: титульный = 1, задание = 2 (без видимых номеров),
+# РЕФЕРАТ показывает "3". Печатный номер совпадает с PDF-страницей.
+PRINT_PAGE_OFFSET = 0
 
 TOC_ITEMS = [
     "ЗАКЛЮЧЕНИЕ",

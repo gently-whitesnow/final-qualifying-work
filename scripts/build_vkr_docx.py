@@ -39,6 +39,24 @@ CITY_YEAR = "Санкт-Петербург 2026"
 FONT_REGULAR = Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf")
 FONT_BOLD = Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf")
 
+VKR_TITLE_TEMPLATE = ROOT / "materials" / "00-source-documents" / "Бакалавриат(ЗАОЧНОЕ)_Бланк_ТитЛИСТ_ЗаданиеВКРБ_2025.docx"
+VKR_GOAL = (
+    "разработать и исследовать real-time интерфейс для системы отслеживания задач, "
+    "в котором WebSocket-соединения обслуживаются несколькими экземплярами серверного приложения, "
+    "а события об изменении сущностей корректно доставляются клиентам независимо от узла подключения."
+)
+VKR_TASKS = (
+    "проанализировать предметную область и подходы к масштабированию WebSocket-соединений; "
+    "исследовать исходную реализацию real-time контура; "
+    "спроектировать распределенную архитектуру с межузловой доставкой событий; "
+    "реализовать решение в отдельной ветке проекта; "
+    "подготовить стенд и провести испытания."
+)
+VKR_CONTENT_SECTIONS = (
+    "анализ предметной области, постановка задачи, проектирование масштабируемого real-time контура, "
+    "реализация, испытания и оценка результатов."
+)
+
 
 _INLINE_CODE_RE = re.compile(r"(`[^`]+`)")
 
@@ -408,7 +426,10 @@ def setup_styles(doc: Document):
         style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
     for name in ["Title", "Subtitle"]:
-        style = styles[name]
+        try:
+            style = styles[name]
+        except KeyError:
+            continue
         style.font.name = "Times New Roman"
         style._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
 
@@ -505,88 +526,227 @@ def set_table_cell_margins(table, margin_twips: int = 0):
                 node.set(qn("w:type"), "dxa")
 
 
-def add_title_page(doc: Document):
-    section = doc.sections[-1]
-    section.top_margin = Cm(1.0)
-    section.bottom_margin = Cm(0.8)
+def fill_template_cell(doc: Document, table_idx: int, row: int, col: int, text: str, *, size: int = 14, align=WD_ALIGN_PARAGRAPH.CENTER, bold: bool = False):
+    cell = doc.tables[table_idx].rows[row].cells[col]
+    set_cell_text(cell, text, size=size, bold=bold, align=align)
 
-    add_centered(doc, "МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ", size=11)
-    add_centered(doc, "федеральное государственное автономное образовательное учреждение высшего образования", size=10)
-    add_centered(doc, "«САНКТ-ПЕТЕРБУРГСКИЙ ГОСУДАРСТВЕННЫЙ УНИВЕРСИТЕТ", size=11)
-    add_centered(doc, "АЭРОКОСМИЧЕСКОГО ПРИБОРОСТРОЕНИЯ»", size=11, space_after=4)
 
-    table = doc.add_table(rows=4, cols=3)
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    clear_table_borders(table)
-    set_table_cell_margins(table, 0)
-    widths = [Cm(6), Cm(5), Cm(5)]
-    for row in table.rows:
-        for i, cell in enumerate(row.cells):
-            cell.width = widths[i]
-    set_cell_text(table.cell(0, 0), "ДОПУСТИТЬ К ЗАЩИТЕ", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
-    set_cell_text(table.cell(1, 0), "Заведующий кафедрой № 43", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
-    set_cell_text(table.cell(2, 0), "________________________", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(table.cell(2, 1), "________________________", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(table.cell(2, 2), "М.Ю. Охтилев", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(table.cell(3, 0), "должность, уч. степень, звание", size=7)
-    set_cell_text(table.cell(3, 1), "подпись, дата", size=7)
-    set_cell_text(table.cell(3, 2), "инициалы, фамилия", size=7)
+def _resize_existing_runs(cell, size_pt: int):
+    for p in cell.paragraphs:
+        for r in p.runs:
+            r.font.size = Pt(size_pt)
 
-    add_spacer(doc, 4)
 
-    add_centered(doc, "БАКАЛАВРСКАЯ РАБОТА", size=14, bold=True, space_after=4)
-    add_centered(doc, "на тему", size=12)
-    p = add_centered(doc, TITLE, size=12)
-    p.paragraph_format.space_after = Pt(4)
+_SHORT_TAIL_WORDS = {"с", "со", "в", "во", "на", "по", "для", "от", "до", "из", "к", "о", "об", "у", "и", "а", "или", "не"}
 
-    line_table = doc.add_table(rows=5, cols=3)
-    clear_table_borders(line_table)
-    set_table_cell_margins(line_table, 0)
-    for row in line_table.rows:
-        for cell in row.cells:
-            cell.width = Cm(5.2)
-    rows = [
-        ("выполнена", STUDENT_INSTR, ""),
-        ("", "фамилия, имя, отчество студента в творительном падеже", ""),
-        ("по направлению подготовки", "09.03.04", "Программная инженерия"),
-        ("", "код", "наименование направления"),
-        ("направленности", "02", "Проектирование программных систем"),
-    ]
-    for r, values in enumerate(rows):
-        if r == 0:
-            line_table.cell(r, 1).merge(line_table.cell(r, 2))
-        for c, value in enumerate(values):
-            if r == 0 and c == 2:
-                continue
-            set_cell_text(line_table.cell(r, c), value, size=7 if r in [1, 3] else 10)
-            if r in [0, 2, 4] and c > 0:
-                set_bottom_border(line_table.cell(r, c))
 
-    add_spacer(doc, 4)
-    sig = doc.add_table(rows=4, cols=3)
-    clear_table_borders(sig)
-    set_table_cell_margins(sig, 0)
-    for row in sig.rows:
-        row.cells[0].width = Cm(7)
-        row.cells[1].width = Cm(4)
-        row.cells[2].width = Cm(5)
-    set_cell_text(sig.cell(0, 0), f"Студент группы № {GROUP}", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
-    set_cell_text(sig.cell(0, 1), "____________________", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(0, 2), STUDENT_SHORT, size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(1, 1), "подпись, дата", size=7)
-    set_cell_text(sig.cell(1, 2), "инициалы, фамилия", size=7)
-    set_cell_text(sig.cell(2, 0), "Руководитель", size=10, align=WD_ALIGN_PARAGRAPH.LEFT)
-    set_cell_text(sig.cell(2, 1), "____________________", size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(2, 2), VKR_SUPERVISOR, size=10, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_text(sig.cell(3, 0), VKR_SUPERVISOR_ROLE, size=7)
-    set_cell_text(sig.cell(3, 1), "подпись, дата", size=7)
-    set_cell_text(sig.cell(3, 2), "инициалы, фамилия", size=7)
+def split_into_lines(text: str, n_lines: int) -> list[str]:
+    """Разбить строку по словам на n_lines примерно равных по длине частей.
+    Избегаем переносов, где строка закончилась бы на коротком предлоге."""
+    words = text.split()
+    if not words:
+        return [""] * n_lines
+    total = len(text)
+    target = total / n_lines
+    lines: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for word in words:
+        new_len = current_len + (1 if current else 0) + len(word)
+        last_word = current[-1].lower() if current else ""
+        ends_with_preposition = last_word in _SHORT_TAIL_WORDS
+        if (
+            current
+            and new_len > target
+            and not ends_with_preposition
+            and len(lines) < n_lines - 1
+        ):
+            lines.append(" ".join(current))
+            current = [word]
+            current_len = len(word)
+        else:
+            current.append(word)
+            current_len = new_len
+    if current:
+        lines.append(" ".join(current))
+    while len(lines) < n_lines:
+        lines.append("")
+    return lines[:n_lines]
 
-    add_spacer(doc, 4)
-    add_centered(doc, CITY_YEAR, size=10)
-    doc.add_page_break()
 
-    set_page_margins(section)
+def _freeze_paragraph_format(p):
+    # Закрываем только те свойства, которые setup_styles меняет в стиле Normal.
+    # space_before/space_after оставляем — они задают вертикальный воздух между
+    # секциями титульного листа (БАКАЛАВРСКАЯ РАБОТА, Санкт-Петербург 2026, и т.п.).
+    p.paragraph_format.first_line_indent = Cm(0)
+    p.paragraph_format.line_spacing = 1.0
+
+
+def _ensure_run_default_size(p, default_pt: int = 12):
+    for r in p.runs:
+        if r.font.size is None:
+            r.font.size = Pt(default_pt)
+
+
+def _strip_run_highlights(p):
+    for r in p.runs:
+        r_pr = r._r.find(qn("w:rPr"))
+        if r_pr is None:
+            continue
+        for h in r_pr.findall(qn("w:highlight")):
+            r_pr.remove(h)
+
+
+def _drop_trailing_rows(table, *, keep: int):
+    while len(table.rows) > keep:
+        last = table.rows[-1]._tr
+        last.getparent().remove(last)
+
+
+def _compact_break_paragraphs(doc: Document):
+    """Параграфы-носители <w:br type=page/> или <w:sectPr/> ужимаем до
+    точечной высоты, чтобы они не вытесняли титульник на отдельную страницу."""
+    for p in doc.paragraphs:
+        has_break = (
+            p._p.find(".//" + qn("w:br") + "[@" + qn("w:type") + "='page']") is not None
+            or p._p.find(".//" + qn("w:sectPr")) is not None
+        )
+        # Эмпирически: считаем "техническим" любой параграф без видимого текста
+        # и без runs.
+        has_text = any((t.text or "").strip() for t in p._p.iter(qn("w:t")))
+        if has_break or not has_text:
+            pPr = p._p.find(qn("w:pPr"))
+            if pPr is None:
+                pPr = OxmlElement("w:pPr")
+                p._p.insert(0, pPr)
+            existing = pPr.find(qn("w:spacing"))
+            if existing is None:
+                existing = OxmlElement("w:spacing")
+                pPr.append(existing)
+            existing.set(qn("w:line"), "20")
+            existing.set(qn("w:lineRule"), "exact")
+            existing.set(qn("w:before"), "0")
+            existing.set(qn("w:after"), "0")
+
+
+def neutralize_template_styles(doc: Document):
+    for p in doc.paragraphs:
+        _freeze_paragraph_format(p)
+        _ensure_run_default_size(p)
+        _strip_run_highlights(p)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    _freeze_paragraph_format(p)
+                    _ensure_run_default_size(p)
+                    _strip_run_highlights(p)
+    _compact_break_paragraphs(doc)
+
+
+def load_vkr_title_pages() -> Document:
+    doc = Document(str(VKR_TITLE_TEMPLATE))
+    # Нейтрализуем наследование Normal-стиля и убираем подсветки до записи,
+    # чтобы явные настройки от set_cell_text не были перезатёрты.
+    neutralize_template_styles(doc)
+    title_section = doc.sections[0]
+    # Шаблон помечает свой sectPr как continuous, что после add_section превращается
+    # в continuous-break и роняет первый абзац тела на ту же страницу. Убираем тип,
+    # чтобы python-docx позже выставил nextPage через WD_SECTION.NEW_PAGE.
+    sect_pr = title_section._sectPr
+    for t in sect_pr.findall(qn("w:type")):
+        sect_pr.remove(t)
+    # Удаляем пустой параграф между последней таблицей и sectPr из шаблона —
+    # он добавляется к section 0 и может перенести содержимое body на лишнюю страницу.
+    body = doc.element.body
+    children = list(body)
+    for i, el in enumerate(children):
+        if el.tag.endswith("}sectPr"):
+            # Идём назад, удаляя пустые параграфы перед sectPr.
+            j = i - 1
+            while j >= 0 and children[j].tag.endswith("}p"):
+                p = children[j]
+                has_text = any((t.text or "").strip() for t in p.iter(qn("w:t")))
+                if has_text:
+                    break
+                body.remove(p)
+                j -= 1
+            break
+
+    # Титульный лист (страница 1).
+    # Table 0 — заведующий кафедрой, уже заполнен в шаблоне; чистим только demo-дату подписи.
+    fill_template_cell(doc, 0, 0, 2, "")
+
+    # Table 1 — "на тему": тема ВКР распределяется по 2 строкам шаблона.
+    # Третья строка остаётся пустой как декоративная (как в шаблоне).
+    title_lines = split_into_lines(TITLE, 2)
+    for r, line in enumerate(title_lines):
+        fill_template_cell(doc, 1, r, 1, line, size=14, align=WD_ALIGN_PARAGRAPH.LEFT)
+
+    # Table 2 — "выполнена": ФИО в творительном падеже справа от метки.
+    # Метку уменьшаем до 11pt, иначе «выполнена» не помещается в узкую ячейку 2.3 см.
+    _resize_existing_runs(doc.tables[2].rows[0].cells[0], 11)
+    fill_template_cell(doc, 2, 0, 1, STUDENT_INSTR, size=14, align=WD_ALIGN_PARAGRAPH.LEFT)
+
+    # Table 3 — направление подготовки уже заполнено в шаблоне (09.03.04 / Программная инженерия).
+    # Направленность: код и название должны стоять в той же строке, что и метка.
+    fill_template_cell(doc, 3, 4, 1, "92", size=14)
+    fill_template_cell(doc, 3, 4, 3, "Проектирование программных систем", size=12)
+    # В шаблоне название направленности продублировано в объединённой строке 6 — очищаем.
+    for ci in range(4):
+        fill_template_cell(doc, 3, 6, ci, "", size=12)
+
+    # Table 4 — студент группы №: группа и фамилия. Чистим demo-дату.
+    fill_template_cell(doc, 4, 0, 1, GROUP, size=14)
+    fill_template_cell(doc, 4, 0, 3, "")
+    fill_template_cell(doc, 4, 0, 5, STUDENT_SHORT, size=14)
+
+    # Table 5 — Руководитель: должность, дата (очищаем), ФИО.
+    fill_template_cell(doc, 5, 0, 0, VKR_SUPERVISOR_ROLE, size=12)
+    fill_template_cell(doc, 5, 0, 2, "")
+    fill_template_cell(doc, 5, 0, 4, VKR_SUPERVISOR, size=14)
+
+    # Лист задания (страница 2).
+    # Table 6 — заведующий кафедрой, уже заполнен; чистим demo-дату.
+    fill_template_cell(doc, 6, 0, 2, "")
+
+    # Table 7 — студенту группы N <ФИО>.
+    fill_template_cell(doc, 7, 0, 1, GROUP, size=14)
+    fill_template_cell(doc, 7, 0, 3, STUDENT_FULL, size=14)
+
+    # Table 8 — тема задания: распределяется по 2 строкам, как и в Table 1.
+    for r, line in enumerate(title_lines):
+        fill_template_cell(doc, 8, r, 1, line, size=14, align=WD_ALIGN_PARAGRAPH.LEFT)
+
+    # Table 9 — приказ ГУАП: номер и дата оставляем пустыми, заполнятся вручную.
+
+    # Table 10 — Цель работы: текст справа от метки в той же строке.
+    fill_template_cell(doc, 10, 0, 1, VKR_GOAL, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+    _drop_trailing_rows(doc.tables[10], keep=1)
+
+    # Table 11 — Задачи, подлежащие решению.
+    fill_template_cell(doc, 11, 0, 1, VKR_TASKS, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+    _drop_trailing_rows(doc.tables[11], keep=1)
+
+    # Table 12 — Содержание работы.
+    fill_template_cell(doc, 12, 0, 1, VKR_CONTENT_SECTIONS, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
+    _drop_trailing_rows(doc.tables[12], keep=1)
+
+    # Table 13 — срок сдачи: чистим demo-дату «15 июня 2026», подпишут от руки.
+    for ci in (1, 3, 5):
+        fill_template_cell(doc, 13, 0, ci, "")
+
+    # Table 14 — Руководитель: должность, дата (очищаем), ФИО.
+    fill_template_cell(doc, 14, 0, 0, VKR_SUPERVISOR_ROLE, size=12)
+    fill_template_cell(doc, 14, 0, 2, "")
+    fill_template_cell(doc, 14, 0, 4, VKR_SUPERVISOR, size=14)
+
+    # Table 15 — Задание принял к исполнению студент группы.
+    fill_template_cell(doc, 15, 0, 1, GROUP, size=14)
+    fill_template_cell(doc, 15, 0, 3, "")
+    fill_template_cell(doc, 15, 0, 5, STUDENT_SHORT, size=14)
+
+    return doc
 
 
 def add_practice_title_page(doc: Document):
@@ -680,54 +840,6 @@ def add_practice_title_page(doc: Document):
     set_page_margins(section)
 
 
-def add_assignment_page(doc: Document):
-    add_centered(doc, "МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ", size=14)
-    add_centered(doc, "федеральное государственное автономное образовательное учреждение высшего образования", size=13)
-    add_centered(doc, "«САНКТ-ПЕТЕРБУРГСКИЙ ГОСУДАРСТВЕННЫЙ УНИВЕРСИТЕТ", size=14)
-    add_centered(doc, "АЭРОКОСМИЧЕСКОГО ПРИБОРОСТРОЕНИЯ»", size=14, space_after=18)
-    add_left(doc, "УТВЕРЖДАЮ", bold=True)
-    add_left(doc, "Заведующий кафедрой №43 ____________________ М.Ю. Охтилев", first_line=0)
-    add_centered(doc, "ЗАДАНИЕ НА ВЫПОЛНЕНИЕ БАКАЛАВРСКОЙ РАБОТЫ", size=16, bold=True, space_after=14)
-    add_left(doc, f"студенту группы {GROUP} {STUDENT_FULL}", first_line=0)
-    add_left(doc, f"на тему: {TITLE}", first_line=0)
-    add_left(doc, "утвержденную приказом ГУАП от «___» __________ 2026 г. № __________", first_line=0)
-    add_left(doc, "Цель работы: разработать и исследовать real-time интерфейс для системы отслеживания задач, в котором WebSocket-соединения обслуживаются несколькими экземплярами серверного приложения, а события об изменении сущностей корректно доставляются клиентам независимо от узла подключения.", first_line=0)
-    add_left(doc, "Задачи, подлежащие решению: проанализировать предметную область и подходы к масштабированию WebSocket-соединений; исследовать исходную реализацию real-time контура; спроектировать распределенную архитектуру с межузловой доставкой событий; реализовать решение в отдельной ветке проекта; подготовить стенд и провести испытания.", first_line=0)
-    add_left(doc, "Содержание работы (основные разделы): анализ предметной области, постановка задачи, проектирование масштабируемого real-time контура, реализация, испытания и оценка результатов.", first_line=0)
-    add_left(doc, "Срок сдачи работы «___» __________ 2026 г.", first_line=0)
-    doc.add_paragraph()
-    add_left(doc, "Руководитель", first_line=0)
-    supervisor = doc.add_table(rows=2, cols=3)
-    clear_table_borders(supervisor)
-    set_table_cell_margins(supervisor, 0)
-    widths = [Cm(5.5), Cm(3.5), Cm(7.0)]
-    for row in supervisor.rows:
-        for i, cell in enumerate(row.cells):
-            cell.width = widths[i]
-    set_cell_text(supervisor.cell(0, 0), VKR_SUPERVISOR_ROLE, size=11)
-    set_cell_text(supervisor.cell(0, 1), "", size=11)
-    set_cell_text(supervisor.cell(0, 2), VKR_SUPERVISOR_FULL, size=10)
-    for c in range(3):
-        set_bottom_border(supervisor.cell(0, c))
-    set_cell_text(supervisor.cell(1, 0), "должность, уч. степень, звание", size=7)
-    set_cell_text(supervisor.cell(1, 1), "подпись, дата", size=7)
-    set_cell_text(supervisor.cell(1, 2), "фамилия, имя, отчество", size=7)
-
-    add_left(doc, f"Задание принял к исполнению студент группы № {GROUP}", first_line=0)
-    student = doc.add_table(rows=2, cols=2)
-    clear_table_borders(student)
-    set_table_cell_margins(student, 0)
-    for row in student.rows:
-        row.cells[0].width = Cm(8.0)
-        row.cells[1].width = Cm(8.0)
-    set_cell_text(student.cell(0, 0), "", size=11)
-    set_cell_text(student.cell(0, 1), STUDENT_SHORT, size=11)
-    for c in range(2):
-        set_bottom_border(student.cell(0, c))
-    set_cell_text(student.cell(1, 0), "подпись, дата", size=7)
-    set_cell_text(student.cell(1, 1), "инициалы, фамилия", size=7)
-
-
 def add_field(paragraph, instr_text: str):
     run = paragraph.add_run()
     fld_begin = OxmlElement("w:fldChar")
@@ -753,7 +865,7 @@ def add_abstract(doc: Document):
     p = doc.add_heading("РЕФЕРАТ", level=1)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     facts = (
-        "Выпускная квалификационная работа содержит 52 страницы, 6 рисунков, "
+        "Выпускная квалификационная работа содержит 51 страницу, 6 рисунков, "
         "2 таблицы, список использованных источников из 20 наименований и 3 приложения."
     )
     add_body_paragraph(doc, facts)
@@ -837,51 +949,51 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
         ]
     else:
         entries = [
-            (1, "РЕФЕРАТ", 1),
-            (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 3),
-            (1, "ВВЕДЕНИЕ", 4),
-            (1, "1. Анализ предметной области и существующих подходов", 8),
-            (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 8),
-            (2, "1.2 WebSocket и SignalR как основа real-time контура", 9),
-            (2, "1.3 Ограничение одноузловой WebSocket-архитектуры", 9),
-            (2, "1.4 Сравнение подходов к масштабированию", 10),
-            (2, "1.5 Вывод по главе", 12),
-            (1, "2. Анализ целевой системы и постановка задачи", 13),
-            (2, "2.1 Характеристика целевой системы", 13),
-            (2, "2.2 Исходная реализация real-time взаимодействия", 14),
-            (2, "2.3 Требования к разрабатываемому решению", 15),
-            (2, "2.4 Выбор платформы и инструментальных средств", 16),
-            (2, "2.5 Постановка задачи", 16),
-            (1, "3. Проектирование масштабируемого real-time контура", 18),
-            (2, "3.1 Исходная архитектура", 18),
-            (2, "3.2 Целевая архитектура", 19),
-            (2, "3.3 Поток real-time события", 20),
-            (2, "3.4 Модель групп и повторной подписки", 21),
-            (2, "3.5 Диагностический контур", 22),
-            (2, "3.6 Семантика доставки и ограничения", 22),
-            (1, "4. Реализация решения в целевой системе", 24),
-            (2, "4.1 Организация работ", 24),
-            (2, "4.2 Изменения серверной части", 24),
-            (2, "4.3 Изменения клиентской части", 26),
-            (2, "4.4 Проверочный клиент", 27),
-            (2, "4.5 Инфраструктурные изменения", 27),
-            (2, "4.6 Автоматизированный сценарий проверки", 28),
-            (1, "5. Испытания и оценка результатов", 30),
-            (2, "5.1 Цель и программа испытаний", 30),
-            (2, "5.2 Стенд испытаний", 30),
-            (2, "5.3 Результат без Redis backplane", 31),
-            (2, "5.4 Результат с Redis backplane", 31),
-            (2, "5.5 Серийная проверка и задержка доставки", 32),
-            (2, "5.6 Проверка восстановления соединения и отказа узла", 33),
-            (2, "5.7 Сравнительная таблица результатов", 33),
-            (2, "5.8 Проверка входной точки стенда", 34),
-            (2, "5.9 Оценка достоверности результатов", 34),
-            (2, "5.10 Вывод по испытаниям", 35),
-            (1, "ЗАКЛЮЧЕНИЕ", 35),
-            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 37),
-            (1, "ПРИЛОЖЕНИЕ А", 38),
-            (1, "ПРИЛОЖЕНИЕ Б", 39),
-            (1, "ПРИЛОЖЕНИЕ В", 43),
+            (1, "РЕФЕРАТ", 3),
+            (1, "ПЕРЕЧЕНЬ СОКРАЩЕНИЙ И ОБОЗНАЧЕНИЙ", 5),
+            (1, "ВВЕДЕНИЕ", 6),
+            (1, "1. Анализ предметной области и существующих подходов", 10),
+            (2, "1.1 Real-time взаимодействие в системах отслеживания задач", 10),
+            (2, "1.2 WebSocket и SignalR как основа real-time контура", 11),
+            (2, "1.3 Ограничение одноузловой WebSocket-архитектуры", 11),
+            (2, "1.4 Сравнение подходов к масштабированию", 12),
+            (2, "1.5 Вывод по главе", 14),
+            (1, "2. Анализ целевой системы и постановка задачи", 15),
+            (2, "2.1 Характеристика целевой системы", 15),
+            (2, "2.2 Исходная реализация real-time взаимодействия", 16),
+            (2, "2.3 Требования к разрабатываемому решению", 17),
+            (2, "2.4 Выбор платформы и инструментальных средств", 18),
+            (2, "2.5 Постановка задачи", 18),
+            (1, "3. Проектирование масштабируемого real-time контура", 20),
+            (2, "3.1 Исходная архитектура", 20),
+            (2, "3.2 Целевая архитектура", 21),
+            (2, "3.3 Поток real-time события", 22),
+            (2, "3.4 Модель групп и повторной подписки", 23),
+            (2, "3.5 Диагностический контур", 24),
+            (2, "3.6 Семантика доставки и ограничения", 24),
+            (1, "4. Реализация решения в целевой системе", 26),
+            (2, "4.1 Организация работ", 26),
+            (2, "4.2 Изменения серверной части", 26),
+            (2, "4.3 Изменения клиентской части", 28),
+            (2, "4.4 Проверочный клиент", 29),
+            (2, "4.5 Инфраструктурные изменения", 29),
+            (2, "4.6 Автоматизированный сценарий проверки", 30),
+            (1, "5. Испытания и оценка результатов", 32),
+            (2, "5.1 Цель и программа испытаний", 32),
+            (2, "5.2 Стенд испытаний", 32),
+            (2, "5.3 Результат без Redis backplane", 33),
+            (2, "5.4 Результат с Redis backplane", 33),
+            (2, "5.5 Серийная проверка и задержка доставки", 34),
+            (2, "5.6 Проверка восстановления соединения и отказа узла", 35),
+            (2, "5.7 Сравнительная таблица результатов", 35),
+            (2, "5.8 Проверка входной точки стенда", 36),
+            (2, "5.9 Оценка достоверности результатов", 36),
+            (2, "5.10 Вывод по испытаниям", 37),
+            (1, "ЗАКЛЮЧЕНИЕ", 36),
+            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 38),
+            (1, "ПРИЛОЖЕНИЕ А", 39),
+            (1, "ПРИЛОЖЕНИЕ Б", 40),
+            (1, "ПРИЛОЖЕНИЕ В", 44),
         ]
     for level, title, page in entries:
         add_toc_line(doc, title, page, level=level)
@@ -2070,13 +2182,14 @@ def audit_docx(path: Path):
 def build_document(kind: str = "vkr"):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     figure_paths = ensure_figures()
-    doc = Document()
-    setup_styles(doc)
-    enable_field_update_on_open(doc)
-    set_page_margins(doc.sections[0])
-    doc.sections[0].footer.is_linked_to_previous = False
 
     if kind == "practice":
+        doc = Document()
+        setup_styles(doc)
+        enable_field_update_on_open(doc)
+        set_page_margins(doc.sections[0])
+        doc.sections[0].footer.is_linked_to_previous = False
+
         add_toc(doc, kind=kind)
 
         body_section = doc.add_section(WD_SECTION.NEW_PAGE)
@@ -2084,11 +2197,26 @@ def build_document(kind: str = "vkr"):
         set_start_page_number(body_section, 4)
         add_page_number_footer(body_section)
     else:
-        add_title_page(doc)
-        add_assignment_page(doc)
+        doc = load_vkr_title_pages()
+        setup_styles(doc)
+        enable_field_update_on_open(doc)
+        doc.sections[0].footer.is_linked_to_previous = False
+
         body_section = doc.add_section(WD_SECTION.NEW_PAGE)
+        # add_section добавляет пустой параграф с sectPr в конец титульной секции.
+        # Сжимаем его, иначе он выпадает на отдельную пустую страницу.
+        sect_break_p = doc.paragraphs[-1]
+        _freeze_paragraph_format(sect_break_p)
+        sect_break_p.paragraph_format.line_spacing = Pt(1)
         set_page_margins(body_section)
-        set_start_page_number(body_section, 1)
+        # ГОСТ-конвенция: титульный = 1, задание = 2 (без видимых номеров),
+        # РЕФЕРАТ начинается с видимого "3".
+        set_start_page_number(body_section, 3)
+        # Шаблон оставил флаг <w:titlePg/> — он подавляет футер на первой странице
+        # секции, из-за чего РЕФЕРАТ оставался без номера. Снимаем.
+        body_sect_pr = body_section._sectPr
+        for el in body_sect_pr.findall(qn("w:titlePg")):
+            body_sect_pr.remove(el)
         add_page_number_footer(body_section)
         add_abstract(doc)
         add_toc(doc, kind=kind)
