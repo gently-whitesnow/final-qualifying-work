@@ -41,21 +41,33 @@ FONT_BOLD = Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf")
 
 VKR_TITLE_TEMPLATE = ROOT / "materials" / "00-source-documents" / "Бакалавриат(ЗАОЧНОЕ)_Бланк_ТитЛИСТ_ЗаданиеВКРБ_2025.docx"
 VKR_GOAL = (
-    "разработать и исследовать real-time интерфейс для системы отслеживания задач, "
-    "в котором WebSocket-соединения обслуживаются несколькими экземплярами серверного приложения, "
-    "а события об изменении сущностей корректно доставляются клиентам независимо от узла подключения."
+    "разработка real-time интерфейса для системы отслеживания задач с поддержкой "
+    "горизонтального масштабирования WebSocket-соединений."
 )
 VKR_TASKS = (
-    "проанализировать предметную область и подходы к масштабированию WebSocket-соединений; "
-    "исследовать исходную реализацию real-time контура; "
-    "спроектировать распределенную архитектуру с межузловой доставкой событий; "
-    "реализовать решение в отдельной ветке проекта; "
-    "подготовить стенд и провести испытания."
+    "1) проанализировать предметную область; 2) спроектировать распределенную архитектуру "
+    "real-time контура; 3) реализовать решение; 4) провести испытания."
 )
 VKR_CONTENT_SECTIONS = (
-    "анализ предметной области, постановка задачи, проектирование масштабируемого real-time контура, "
-    "реализация, испытания и оценка результатов."
+    "введение, анализ предметной области, проектирование real-time контура, "
+    "разработка и тестирование, заключение."
 )
+VKR_GOAL_LINES = [
+    "разработка real-time интерфейса для системы отслеживания задач с поддержкой",
+    "горизонтального масштабирования WebSocket-соединений.",
+    "",
+]
+VKR_TASK_LINES = [
+    "1) проанализировать предметную область; 2) спроектировать",
+    "распределенную архитектуру real-time контура; 3) реализовать решение; 4) провести испытания.",
+    "",
+]
+VKR_CONTENT_LINES = [
+    "введение, анализ предметной области,",
+    "проектирование real-time контура, разработка и тестирование, заключение.",
+    "",
+    "",
+]
 
 
 _INLINE_CODE_RE = re.compile(r"(`[^`]+`)")
@@ -603,6 +615,21 @@ def _drop_trailing_rows(table, *, keep: int):
         last.getparent().remove(last)
 
 
+def fill_lined_template_lines(
+    doc: Document,
+    table_idx: int,
+    lines: list[str],
+    *,
+    size: int = 11,
+):
+    """Заполнить линованное поле заранее выбранными строками формы."""
+    table = doc.tables[table_idx]
+    for row_idx, line in enumerate(lines[: len(table.rows)]):
+        col_idx = 1 if row_idx == 0 else 0
+        cell = table.rows[row_idx].cells[col_idx]
+        set_cell_text(cell, line, size=size, align=WD_ALIGN_PARAGRAPH.LEFT)
+
+
 def _compact_break_paragraphs(doc: Document):
     """Параграфы-носители <w:br type=page/> или <w:sectPr/> ужимаем до
     точечной высоты, чтобы они не вытесняли титульник на отдельную страницу."""
@@ -720,17 +747,11 @@ def load_vkr_title_pages() -> Document:
 
     # Table 9 — приказ ГУАП: номер и дата оставляем пустыми, заполнятся вручную.
 
-    # Table 10 — Цель работы: текст справа от метки в той же строке.
-    fill_template_cell(doc, 10, 0, 1, VKR_GOAL, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-    _drop_trailing_rows(doc.tables[10], keep=1)
-
-    # Table 11 — Задачи, подлежащие решению.
-    fill_template_cell(doc, 11, 0, 1, VKR_TASKS, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-    _drop_trailing_rows(doc.tables[11], keep=1)
-
-    # Table 12 — Содержание работы.
-    fill_template_cell(doc, 12, 0, 1, VKR_CONTENT_SECTIONS, size=11, align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-    _drop_trailing_rows(doc.tables[12], keep=1)
+    # Tables 10-12 — линованные поля задания. Сохраняем строки шаблона и
+    # заполняем только существующие ячейки, как в подписанных примерах.
+    fill_lined_template_lines(doc, 10, VKR_GOAL_LINES)
+    fill_lined_template_lines(doc, 11, VKR_TASK_LINES)
+    fill_lined_template_lines(doc, 12, VKR_CONTENT_LINES)
 
     # Table 13 — срок сдачи: чистим demo-дату «15 июня 2026», подпишут от руки.
     for ci in (1, 3, 5):
