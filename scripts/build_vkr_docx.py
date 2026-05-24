@@ -1010,11 +1010,11 @@ def add_toc(doc: Document, *, kind: str = "vkr"):
             (2, "5.8 Проверка входной точки стенда", 35),
             (2, "5.9 Оценка достоверности результатов", 35),
             (2, "5.10 Вывод по испытаниям", 36),
-            (1, "ЗАКЛЮЧЕНИЕ", 36),
-            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 38),
-            (1, "ПРИЛОЖЕНИЕ А", 39),
-            (1, "ПРИЛОЖЕНИЕ Б", 40),
-            (1, "ПРИЛОЖЕНИЕ В", 44),
+            (1, "ЗАКЛЮЧЕНИЕ", 37),
+            (1, "СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", 39),
+            (1, "ПРИЛОЖЕНИЕ А", 40),
+            (1, "ПРИЛОЖЕНИЕ Б", 41),
+            (1, "ПРИЛОЖЕНИЕ В", 45),
         ]
     for level, title, page in entries:
         add_toc_line(doc, title, page, level=level)
@@ -1287,7 +1287,7 @@ def transform_for_practice(text: str) -> str:
     return text
 
 
-def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
+def process_markdown(doc: Document, text: str, figure_paths: list[Path], *, kind: str = "vkr"):
     lines = text.splitlines()
     in_code = False
     code_lang = None
@@ -1381,6 +1381,8 @@ def process_markdown(doc: Document, text: str, figure_paths: list[Path]):
             p = doc.add_heading(heading.upper() if heading in {"Введение", "Заключение"} else heading, level=1)
             if heading in {"Введение", "Заключение"}:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                if kind == "vkr" and heading == "Заключение":
+                    p.paragraph_format.page_break_before = True
             else:
                 p.paragraph_format.page_break_before = True
             reset_numbering()
@@ -2246,7 +2248,7 @@ def build_document(kind: str = "vkr"):
     text = SOURCE.read_text(encoding="utf-8")
     if kind == "practice":
         text = transform_for_practice(text)
-    process_markdown(doc, text, figure_paths)
+    process_markdown(doc, text, figure_paths, kind=kind)
     add_appendices(doc, kind=kind)
 
     out_docx = PRACTICE_OUT_DOCX if kind == "practice" else OUT_DOCX
